@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "934941327906",
+    "project_id": "worshippro-53fae",
+    "storage_bucket": "worshippro-53fae.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:934941327906:android:fd9fbe19b5b7255e15407b",
+        "android_client_info": {
+          "package_name": "com.example.worshippro"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBkmrIQ9U1tMjzeUmDiXRB8z4Lo0SI06sk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
