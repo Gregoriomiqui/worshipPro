@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:uuid/uuid.dart';
 import 'package:worshippro/models/liturgy.dart';
 import 'package:worshippro/models/liturgy_block.dart';
 import 'package:worshippro/models/song.dart';
@@ -89,6 +90,81 @@ class LiturgyService {
     }
   }
 
+  /// Duplica una liturgia con todos sus bloques y canciones
+  Future<String> duplicateLiturgy(String liturgyId) async {
+    try {
+      // Obtener la liturgia original con todos sus bloques
+      final originalLiturgy = await getLiturgyById(liturgyId);
+      
+      if (originalLiturgy == null) {
+        throw Exception('Liturgia no encontrada');
+      }
+      
+      // Calcular el número de duplicado
+      final allLiturgies = await _liturgiesCollection.get();
+      int duplicateNumber = 1;
+      String baseTitle = originalLiturgy.titulo;
+      
+      // Buscar cuántas copias existen
+      for (var doc in allLiturgies.docs) {
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data != null) {
+          final title = data['titulo'] as String?;
+          if (title != null && title.startsWith(baseTitle)) {
+            final match = RegExp(r'duplicated_(\d+)$').firstMatch(title);
+            if (match != null) {
+              final num = int.parse(match.group(1)!);
+              if (num >= duplicateNumber) {
+                duplicateNumber = num + 1;
+              }
+            }
+          }
+        }
+      }
+      
+      // Crear nueva liturgia con sufijo
+      final newLiturgyId = const Uuid().v4();
+      final newLiturgy = originalLiturgy.copyWith(
+        id: newLiturgyId,
+        titulo: '${baseTitle}_duplicated_$duplicateNumber',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      
+      // Crear la liturgia
+      await _liturgiesCollection.doc(newLiturgyId).set(newLiturgy.toMap());
+      
+      // Duplicar todos los bloques
+      for (var block in originalLiturgy.bloques) {
+        final newBlockId = const Uuid().v4();
+        final blockData = block.toMap();
+        
+        await _liturgiesCollection
+            .doc(newLiturgyId)
+            .collection('bloques')
+            .doc(newBlockId)
+            .set(blockData);
+        
+        // Duplicar canciones si el bloque es de adoración
+        if (block.isAdoracion && block.canciones.isNotEmpty) {
+          for (var song in block.canciones) {
+            await _liturgiesCollection
+                .doc(newLiturgyId)
+                .collection('bloques')
+                .doc(newBlockId)
+                .collection('canciones')
+                .add(song.toMap());
+          }
+        }
+      }
+      
+      return newLiturgyId;
+    } catch (e) {
+      print('Error al duplicar liturgia: $e');
+      rethrow;
+    }
+  }
+
   /// Elimina una liturgia y todos sus bloques y canciones
   Future<void> deleteLiturgy(String liturgyId) async {
     try {
@@ -157,6 +233,13 @@ class LiturgyService {
           .collection('bloques')
           .add(block.toMap());
 
+      // Guardar canciones si es un bloque de adoración
+      if (block.isAdoracion && block.canciones.isNotEmpty) {
+        for (var song in block.canciones) {
+          await docRef.collection('canciones').add(song.toMap());
+        }
+      }
+
       // Actualizar timestamp de la liturgia
       await _liturgiesCollection.doc(liturgyId).update({
         'updatedAt': Timestamp.fromDate(DateTime.now()),
@@ -173,11 +256,26 @@ class LiturgyService {
   Future<void> updateBlock(
       String liturgyId, LiturgyBlock block) async {
     try {
-      await _liturgiesCollection
+      final blockRef = _liturgiesCollection
           .doc(liturgyId)
           .collection('bloques')
-          .doc(block.id)
-          .update(block.toMap());
+          .doc(block.id);
+      
+      await blockRef.update(block.toMap());
+
+      // Si es un bloque de adoración, actualizar las canciones
+      if (block.isAdoracion) {
+        // Eliminar todas las canciones existentes
+        final existingSongs = await blockRef.collection('canciones').get();
+        for (var songDoc in existingSongs.docs) {
+          await songDoc.reference.delete();
+        }
+        
+        // Agregar las nuevas canciones
+        for (var song in block.canciones) {
+          await blockRef.collection('canciones').add(song.toMap());
+        }
+      }
 
       // Actualizar timestamp de la liturgia
       await _liturgiesCollection.doc(liturgyId).update({

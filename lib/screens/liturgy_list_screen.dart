@@ -65,78 +65,30 @@ class _LiturgyListScreenState extends State<LiturgyListScreen> {
             );
           }
 
-          return ResponsiveBuilder(
-            builder: (context, info) {
-              // Para móviles, usar ListView simple con dismissible
-              // Para tablets/desktop, usar grid
-              if (info.isMobile || (info.isTablet && info.isPortrait)) {
-                return ListView.builder(
-                  padding: info.adaptivePadding,
-                  itemCount: provider.liturgies.length,
-                  itemBuilder: (context, index) {
-                    final liturgy = provider.liturgies[index];
-                    return Dismissible(
-                      key: Key(liturgy.id),
-                      direction: DismissDirection.endToStart,
-                      background: Container(
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.only(right: 20),
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: const Icon(
-                          Icons.delete,
-                          color: Colors.white,
-                          size: 32,
+          // Stack para mostrar loading overlay cuando el provider está procesando
+          return Stack(
+            children: [
+              _buildLiturgyList(context, provider, l10n),
+              if (provider.isLoading)
+                Container(
+                  color: Colors.black.withOpacity(0.3),
+                  child: const Center(
+                    child: Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 16),
+                            Text('Procesando...'),
+                          ],
                         ),
                       ),
-                      confirmDismiss: (direction) async {
-                        return await ConfirmDialog.show(
-                          context,
-                          title: l10n.confirmDelete,
-                          message: l10n.confirmDeleteLiturgy,
-                          confirmText: l10n.delete,
-                          cancelText: l10n.cancel,
-                          isDestructive: true,
-                        );
-                      },
-                      onDismissed: (direction) {
-                        _deleteLiturgyWithoutConfirm(context, liturgy);
-                      },
-                      child: _LiturgyCard(
-                        liturgy: liturgy,
-                        onTap: () => _openLiturgyEditor(context, liturgy),
-                        onDelete: () => _deleteLiturgy(context, liturgy),
-                        isCompact: info.isMobile,
-                      ),
-                    );
-                  },
-                );
-              }
-
-              // Para tablets en landscape o desktop, usar grid
-              return GridView.builder(
-                padding: info.adaptivePadding,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: info.isDesktop ? 3 : 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: info.isDesktop ? 1.5 : 1.3,
+                    ),
+                  ),
                 ),
-                itemCount: provider.liturgies.length,
-                itemBuilder: (context, index) {
-                  final liturgy = provider.liturgies[index];
-                  return _LiturgyCard(
-                    liturgy: liturgy,
-                    onTap: () => _openLiturgyEditor(context, liturgy),
-                    onDelete: () => _deleteLiturgy(context, liturgy),
-                    isCompact: false,
-                  );
-                },
-              );
-            },
+            ],
           );
         },
       ),
@@ -176,68 +128,33 @@ class _LiturgyListScreenState extends State<LiturgyListScreen> {
     );
   }
 
-  Future<void> _deleteLiturgy(BuildContext context, Liturgy liturgy) async {
+  /// Elimina una liturgia con o sin confirmación previa
+  Future<void> _deleteLiturgy(
+    BuildContext context, 
+    Liturgy liturgy, {
+    bool requireConfirmation = true,
+  }) async {
     final l10n = AppLocalizations.of(context);
-    final confirmed = await ConfirmDialog.show(
-      context,
-      title: l10n.confirmDelete,
-      message: l10n.confirmDeleteLiturgy,
-      confirmText: l10n.delete,
-      cancelText: l10n.cancel,
-      isDestructive: true,
-    );
-
-    if (confirmed && context.mounted) {
-      // Mostrar indicador de carga
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Text(l10n.loading),
-            ],
-          ),
-          duration: const Duration(seconds: 30),
-        ),
+    
+    // Si se requiere confirmación, mostrar diálogo
+    if (requireConfirmation) {
+      final confirmed = await ConfirmDialog.show(
+        context,
+        title: l10n.confirmDelete,
+        message: l10n.confirmDeleteLiturgy,
+        confirmText: l10n.delete,
+        cancelText: l10n.cancel,
+        isDestructive: true,
       );
-
-      final success =
-          await context.read<LiturgyProvider>().deleteLiturgy(liturgy.id);
-
-      if (context.mounted) {
-        // Cerrar el snackbar de carga
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        
-        final l10n = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              success
-                  ? l10n.translate('liturgyDeletedSuccess')
-                  : l10n.errorDeletingLiturgy,
-            ),
-            backgroundColor: success ? Colors.green : Colors.red,
-            duration: Duration(seconds: success ? 2 : 3),
-          ),
-        );
-      }
+      
+      if (!confirmed || !context.mounted) return;
     }
-  }
 
-  Future<void> _deleteLiturgyWithoutConfirm(BuildContext context, Liturgy liturgy) async {
-    final success =
-        await context.read<LiturgyProvider>().deleteLiturgy(liturgy.id);
+    // Ejecutar eliminación (el loading se muestra automáticamente por el Stack)
+    final success = await context.read<LiturgyProvider>().deleteLiturgy(liturgy.id);
 
+    // Mostrar resultado solo si el widget sigue montado
     if (context.mounted) {
-      final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -250,6 +167,86 @@ class _LiturgyListScreenState extends State<LiturgyListScreen> {
         ),
       );
     }
+  }
+
+  /// Construye la lista de liturgias (ListView o GridView según el dispositivo)
+  Widget _buildLiturgyList(
+    BuildContext context, 
+    LiturgyProvider provider, 
+    AppLocalizations l10n,
+  ) {
+    return ResponsiveBuilder(
+      builder: (context, info) {
+        // Para móviles, usar ListView simple con dismissible
+        if (info.isMobile || (info.isTablet && info.isPortrait)) {
+          return ListView.builder(
+            padding: info.adaptivePadding,
+            itemCount: provider.liturgies.length,
+            itemBuilder: (context, index) {
+              final liturgy = provider.liturgies[index];
+              return Dismissible(
+                key: Key(liturgy.id),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.only(right: 20),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(
+                    Icons.delete,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
+                confirmDismiss: (direction) async {
+                  return await ConfirmDialog.show(
+                    context,
+                    title: l10n.confirmDelete,
+                    message: l10n.confirmDeleteLiturgy,
+                    confirmText: l10n.delete,
+                    cancelText: l10n.cancel,
+                    isDestructive: true,
+                  );
+                },
+                onDismissed: (direction) {
+                  _deleteLiturgy(context, liturgy, requireConfirmation: false);
+                },
+                child: _LiturgyCard(
+                  liturgy: liturgy,
+                  onTap: () => _openLiturgyEditor(context, liturgy),
+                  onDelete: () => _deleteLiturgy(context, liturgy),
+                  isCompact: info.isMobile,
+                ),
+              );
+            },
+          );
+        }
+
+        // Para tablets en landscape o desktop, usar grid
+        return GridView.builder(
+          padding: info.adaptivePadding,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: info.isDesktop ? 3 : 2,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: info.isDesktop ? 1.5 : 1.3,
+          ),
+          itemCount: provider.liturgies.length,
+          itemBuilder: (context, index) {
+            final liturgy = provider.liturgies[index];
+            return _LiturgyCard(
+              liturgy: liturgy,
+              onTap: () => _openLiturgyEditor(context, liturgy),
+              onDelete: () => _deleteLiturgy(context, liturgy),
+              isCompact: false,
+            );
+          },
+        );
+      },
+    );
   }
 
   void _showAboutDialog(BuildContext context) {
@@ -382,6 +379,29 @@ class _LiturgyCard extends StatelessWidget {
     );
   }
 
+  Future<void> _duplicateLiturgy(BuildContext context) async {
+    final provider = context.read<LiturgyProvider>();
+    final newLiturgyId = await provider.duplicateLiturgy(liturgy.id);
+    
+    if (context.mounted && newLiturgyId != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Culto duplicado correctamente'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error al duplicar el culto'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
   void _showContextMenu(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     showModalBottomSheet(
@@ -396,6 +416,14 @@ class _LiturgyCard extends StatelessWidget {
               onTap: () {
                 Navigator.pop(context);
                 onTap();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.copy),
+              title: const Text('Duplicar'),
+              onTap: () {
+                Navigator.pop(context);
+                _duplicateLiturgy(context);
               },
             ),
             ListTile(

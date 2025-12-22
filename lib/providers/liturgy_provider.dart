@@ -96,6 +96,26 @@ class LiturgyProvider with ChangeNotifier {
     }
   }
 
+  /// Duplica una liturgia existente
+  Future<String?> duplicateLiturgy(String liturgyId) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final newLiturgyId = await _liturgyService.duplicateLiturgy(liturgyId);
+      _error = null;
+      _isLoading = false;
+      notifyListeners();
+      return newLiturgyId;
+    } catch (e) {
+      _error = 'Error al duplicar liturgia: $e';
+      _isLoading = false;
+      notifyListeners();
+      return null;
+    }
+  }
+
   /// Elimina una liturgia
   Future<bool> deleteLiturgy(String liturgyId) async {
     _isLoading = true;

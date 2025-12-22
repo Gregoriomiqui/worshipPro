@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -30,6 +31,7 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
   bool _isNewLiturgy = true;
+  Timer? _autoSaveTimer;
 
   @override
   void initState() {
@@ -37,7 +39,23 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
     _isNewLiturgy = widget.liturgyId == null;
     if (!_isNewLiturgy) {
       _loadLiturgy();
+      
+      // Agregar listeners para auto-guardado
+      _tituloController.addListener(_onTextChanged);
+      _descripcionController.addListener(_onTextChanged);
     }
+  }
+
+  void _onTextChanged() {
+    // Cancelar el timer anterior si existe
+    _autoSaveTimer?.cancel();
+    
+    // Crear un nuevo timer que se ejecutará después de 2 segundos de inactividad
+    _autoSaveTimer = Timer(const Duration(seconds: 2), () {
+      if (!_isNewLiturgy && mounted) {
+        _saveLiturgy(showSuccessMessage: false);
+      }
+    });
   }
 
   Future<void> _loadLiturgy() async {
@@ -62,6 +80,7 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
 
   @override
   void dispose() {
+    _autoSaveTimer?.cancel();
     _tituloController.dispose();
     _descripcionController.dispose();
     super.dispose();
@@ -73,17 +92,19 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
       appBar: AppBar(
         title: Text(_isNewLiturgy ? 'Nuevo culto' : 'Editar culto'),
         actions: [
+          // Mostrar botón de guardar solo cuando es nueva liturgia
+          if (_isNewLiturgy)
+            IconButton(
+              icon: const Icon(Icons.save),
+              onPressed: _saveLiturgy,
+              tooltip: 'Guardar',
+            ),
           if (!_isNewLiturgy)
             IconButton(
               icon: const Icon(Icons.present_to_all),
               onPressed: _openPresentationMode,
               tooltip: 'Modo presentación',
             ),
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: _saveLiturgy,
-            tooltip: 'Guardar',
-          ),
         ],
       ),
       body: _isLoading
@@ -333,10 +354,14 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
 
     if (picked != null) {
       setState(() => _selectedDate = picked);
+      // Auto-guardar cambio de fecha
+      if (!_isNewLiturgy) {
+        _saveLiturgy(showSuccessMessage: false);
+      }
     }
   }
 
-  Future<void> _saveLiturgy() async {
+  Future<void> _saveLiturgy({bool showSuccessMessage = true}) async {
     if (!_formKey.currentState!.validate()) return;
 
     final l10n = AppLocalizations.of(context);
@@ -363,7 +388,11 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
         setState(() => _isNewLiturgy = false);
         await provider.loadLiturgy(liturgyId);
         
-        if (mounted) {
+        // Agregar listeners para auto-guardado ahora que ya no es nueva
+        _tituloController.addListener(_onTextChanged);
+        _descripcionController.addListener(_onTextChanged);
+        
+        if (mounted && showSuccessMessage) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(l10n.translate('liturgyCreatedSuccess')),
@@ -410,7 +439,7 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
 
       final success = await provider.updateLiturgy(updatedLiturgy);
       
-      if (mounted) {
+      if (mounted && showSuccessMessage) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -447,10 +476,13 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
         // Forzar recarga completa de la liturgia
         await provider.loadLiturgy(liturgyId);
         
+        // Auto-guardar la liturgia después de agregar el bloque (sin mensaje)
+        await _saveLiturgy(showSuccessMessage: false);
+        
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Bloque agregado correctamente'),
+              content: Text('Bloque agregado y culto guardado'),
               backgroundColor: Colors.green,
               duration: Duration(seconds: 2),
             ),
@@ -485,10 +517,13 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
           // Forzar recarga completa de la liturgia
           await context.read<LiturgyProvider>().loadLiturgy(liturgyId);
           
+          // Auto-guardar la liturgia después de editar el bloque (sin mensaje)
+          await _saveLiturgy(showSuccessMessage: false);
+          
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Bloque actualizado correctamente'),
+                content: Text('Bloque actualizado y culto guardado'),
                 backgroundColor: Colors.green,
                 duration: Duration(seconds: 2),
               ),
@@ -570,6 +605,19 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
 
     if (mounted) {
       await context.read<LiturgyProvider>().refreshCurrentLiturgy();
+      
+      // Auto-guardar la liturgia después de reordenar (sin mensaje)
+      await _saveLiturgy(showSuccessMessage: false);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Orden actualizado y culto guardado'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
@@ -782,37 +830,75 @@ class _BlockCard extends StatelessWidget {
                   ],
                   
                   // Canciones (si es adoración)
-                  if (block.isAdoracion && block.canciones.isNotEmpty) ...[
+                  if (block.isAdoracion) ...[
                     SizedBox(height: info.adaptiveSpacing),
-                    ...block.canciones.map((song) => Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.music_note,
-                                size: info.isMobile ? 14 : 16,
+                    if (block.canciones.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.music_note,
+                              size: info.isMobile ? 14 : 16,
+                              color: Colors.grey,
+                            ),
+                            SizedBox(width: info.adaptiveSpacing / 2),
+                            Text(
+                              'Sin canciones',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontSize: info.fontSizeFor(14),
+                                color: Colors.grey,
+                                fontStyle: FontStyle.italic,
                               ),
-                              SizedBox(width: info.adaptiveSpacing / 2),
-                              Expanded(
-                                child: Text(
-                                  song.nombre,
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    fontSize: info.fontSizeFor(14),
-                                  ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      ...block.canciones.map((song) => Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.music_note,
+                                  size: info.isMobile ? 14 : 16,
+                                  color: Colors.blue,
                                 ),
-                              ),
-                              if (song.tono != null) ...[
                                 SizedBox(width: info.adaptiveSpacing / 2),
-                                Text(
-                                  '(${song.tono})',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    fontSize: info.fontSizeFor(12),
+                                Expanded(
+                                  child: Text(
+                                    song.nombre,
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      fontSize: info.fontSizeFor(14),
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
                                 ),
+                                if (song.tono != null) ...[
+                                  SizedBox(width: info.adaptiveSpacing / 2),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: info.isMobile ? 6 : 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: Colors.blue),
+                                    ),
+                                    child: Text(
+                                      song.tono!,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue,
+                                        fontSize: info.fontSizeFor(12),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
-                            ],
-                          ),
-                        )),
+                            ),
+                          )),
                   ],
                 ],
               ),
@@ -893,10 +979,13 @@ class _BlockDialogState extends State<_BlockDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final dialogWidth = screenWidth > 900 ? 900.0 : screenWidth * 0.9;
+    
     return AlertDialog(
       title: Text(widget.block == null ? 'Nuevo bloque' : 'Editar bloque'),
       content: SizedBox(
-        width: 600,
+        width: dialogWidth,
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
@@ -995,19 +1084,146 @@ class _BlockDialogState extends State<_BlockDialog> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  ..._canciones.map((song) => ListTile(
-                        leading: const Icon(Icons.music_note),
-                        title: Text(song.nombre),
-                        subtitle: song.tono != null
-                            ? Text('Tono: ${song.tono}')
-                            : null,
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete),
-                          onPressed: () {
-                            setState(() => _canciones.remove(song));
-                          },
+                  if (_canciones.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'No hay canciones. Agrega al menos una.',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontStyle: FontStyle.italic,
+                          ),
                         ),
-                      )),
+                      ),
+                    )
+                  else
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isNarrow = constraints.maxWidth < 600;
+                        return SizedBox(
+                          height: isNarrow ? 200 : 250,
+                          child: ReorderableListView.builder(
+                            shrinkWrap: true,
+                            itemCount: _canciones.length,
+                            onReorder: (oldIndex, newIndex) {
+                              setState(() {
+                                if (oldIndex < newIndex) {
+                                  newIndex -= 1;
+                                }
+                                final song = _canciones.removeAt(oldIndex);
+                                _canciones.insert(newIndex, song);
+                              });
+                            },
+                            itemBuilder: (context, index) {
+                              final song = _canciones[index];
+                              return Card(
+                                key: ValueKey(song.id),
+                                margin: const EdgeInsets.only(bottom: 8),
+                                child: ListTile(
+                                  dense: isNarrow,
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: isNarrow ? 8 : 16,
+                                    vertical: isNarrow ? 4 : 8,
+                                  ),
+                                  leading: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '${index + 1}.',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.grey,
+                                          fontSize: isNarrow ? 12 : 14,
+                                        ),
+                                      ),
+                                      SizedBox(width: isNarrow ? 4 : 8),
+                                      Icon(
+                                        Icons.music_note,
+                                        size: isNarrow ? 18 : 24,
+                                      ),
+                                    ],
+                                  ),
+                                  title: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          song.nombre,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: isNarrow ? 13 : 15,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      if (song.tono != null) ...[
+                                        SizedBox(width: isNarrow ? 4 : 8),
+                                        Container(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: isNarrow ? 6 : 8,
+                                            vertical: isNarrow ? 2 : 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.blue.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(4),
+                                            border: Border.all(color: Colors.blue),
+                                          ),
+                                          child: Text(
+                                            song.tono!,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.blue,
+                                              fontSize: isNarrow ? 11 : 13,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  subtitle: song.autor != null
+                                      ? Text(
+                                          'Autor: ${song.autor}',
+                                          style: TextStyle(
+                                            fontSize: isNarrow ? 11 : 13,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        )
+                                      : null,
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.delete,
+                                          size: isNarrow ? 20 : 24,
+                                        ),
+                                        padding: EdgeInsets.all(isNarrow ? 4 : 8),
+                                        constraints: BoxConstraints(
+                                          minWidth: isNarrow ? 32 : 40,
+                                          minHeight: isNarrow ? 32 : 40,
+                                        ),
+                                        onPressed: () {
+                                          setState(() => _canciones.remove(song));
+                                        },
+                                      ),
+                                      Icon(
+                                        Icons.drag_handle,
+                                        size: isNarrow ? 18 : 24,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
                 ],
               ],
             ),
@@ -1040,6 +1256,18 @@ class _BlockDialogState extends State<_BlockDialog> {
 
   void _saveBlock() {
     if (!_formKey.currentState!.validate()) return;
+
+    // Validar que los bloques de adoración tengan al menos una canción
+    if (_selectedType == BlockType.adoracionAlabanza && _canciones.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Debes agregar al menos una canción para bloques de adoración'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
 
     final responsables = _responsablesController.text
         .split(',')
@@ -1078,13 +1306,18 @@ class _SongDialogState extends State<_SongDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nombreController = TextEditingController();
   final _autorController = TextEditingController();
-  final _tonoController = TextEditingController();
+  String? _selectedTono;
+  
+  // Lista de notas en nomenclatura americana
+  static const List<String> _notasAmericanas = [
+    'C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 
+    'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B',
+  ];
 
   @override
   void dispose() {
     _nombreController.dispose();
     _autorController.dispose();
-    _tonoController.dispose();
     super.dispose();
   }
 
@@ -1119,13 +1352,22 @@ class _SongDialogState extends State<_SongDialog> {
               ),
             ),
             const SizedBox(height: 16),
-            TextFormField(
-              controller: _tonoController,
+            DropdownButtonFormField<String>(
+              initialValue: _selectedTono,
               decoration: const InputDecoration(
                 labelText: 'Tono (opcional)',
-                hintText: 'Ej: Re, Mi, Fa',
-                prefixIcon: Icon(Icons.key),
+                hintText: 'Selecciona el tono',
+                prefixIcon: Icon(Icons.music_note),
               ),
+              items: _notasAmericanas
+                  .map((nota) => DropdownMenuItem(
+                        value: nota,
+                        child: Text(nota),
+                      ))
+                  .toList(),
+              onChanged: (value) {
+                setState(() => _selectedTono = value);
+              },
             ),
           ],
         ),
@@ -1144,9 +1386,7 @@ class _SongDialogState extends State<_SongDialog> {
                 autor: _autorController.text.isEmpty
                     ? null
                     : _autorController.text,
-                tono: _tonoController.text.isEmpty
-                    ? null
-                    : _tonoController.text,
+                tono: _selectedTono,
               );
               Navigator.pop(context, song);
             }
