@@ -5,6 +5,7 @@ import 'package:worshippro/l10n/app_localizations.dart';
 enum BlockType {
   adoracionAlabanza('worship'),
   oracion('prayer'),
+  lecturaBiblica('bibleReading'),
   reflexion('sermon'),
   accionGracias('blessing'),
   ofrendas('offering'),
@@ -30,6 +31,8 @@ enum BlockType {
         return 'Adoración y alabanza';
       case BlockType.oracion:
         return 'Oración';
+      case BlockType.lecturaBiblica:
+        return 'Lectura Bíblica';
       case BlockType.reflexion:
         return 'Reflexión';
       case BlockType.accionGracias:

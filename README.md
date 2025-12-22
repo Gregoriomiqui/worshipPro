@@ -43,10 +43,11 @@
 - ✅ Reordenamiento de canciones dentro de cada bloque
 - ✅ Visualización de cantidad de canciones en cada bloque
 
-### 📋 9 Tipos de Bloques Predefinidos
+### 📋 10 Tipos de Bloques Predefinidos
 - 🙏 **Adoración y Alabanza** - Con gestión de canciones
 - 🤲 **Oración** - Momentos de oración dirigida
-- 📖 **Reflexión/Sermón** - Mensaje principal
+- 📖 **Lectura Bíblica** - Lectura de pasajes bíblicos
+- 📚 **Reflexión/Sermón** - Mensaje principal
 - 🙌 **Acción de Gracias** - Bendiciones y agradecimientos
 - 💰 **Ofrendas** - Momento de ofrenda
 - 📢 **Anuncios** - Comunicados y avisos
