@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:worshippro/models/liturgy.dart';
 import 'package:worshippro/services/liturgy_service.dart';
 
-/// Provider para gestionar las liturgias
+/// Provider para gestionar los cultos
 class LiturgyProvider with ChangeNotifier {
   final LiturgyService _liturgyService = LiturgyService();
 

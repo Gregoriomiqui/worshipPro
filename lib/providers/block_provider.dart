@@ -3,7 +3,7 @@ import 'package:worshippro/models/liturgy_block.dart';
 import 'package:worshippro/models/song.dart';
 import 'package:worshippro/services/liturgy_service.dart';
 
-/// Provider para gestionar bloques de liturgia
+/// Provider para gestionar bloques de culto
 class BlockProvider with ChangeNotifier {
   final LiturgyService _liturgyService = LiturgyService();
 

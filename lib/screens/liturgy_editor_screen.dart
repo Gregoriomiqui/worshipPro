@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
+import 'package:worshippro/l10n/app_localizations.dart';
 import 'package:worshippro/models/block_type.dart';
 import 'package:worshippro/models/liturgy.dart';
 import 'package:worshippro/models/liturgy_block.dart';
@@ -9,9 +10,10 @@ import 'package:worshippro/models/song.dart';
 import 'package:worshippro/providers/block_provider.dart';
 import 'package:worshippro/providers/liturgy_provider.dart';
 import 'package:worshippro/screens/presentation_mode_screen.dart';
+import 'package:worshippro/utils/responsive_utils.dart';
 import 'package:worshippro/widgets/common_widgets.dart';
 
-/// Pantalla para editar o crear una liturgia
+/// Pantalla para editar o crear un culto
 class LiturgyEditorScreen extends StatefulWidget {
   final String? liturgyId;
 
@@ -40,9 +42,15 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
 
   Future<void> _loadLiturgy() async {
     setState(() => _isLoading = true);
-    await context.read<LiturgyProvider>().loadLiturgy(widget.liturgyId!);
     
-    final liturgy = context.read<LiturgyProvider>().currentLiturgy;
+    // Obtener el provider antes del await
+    final provider = context.read<LiturgyProvider>();
+    await provider.loadLiturgy(widget.liturgyId!);
+    
+    // Verificar que el widget aún esté montado
+    if (!mounted) return;
+    
+    final liturgy = provider.currentLiturgy;
     if (liturgy != null) {
       _tituloController.text = liturgy.titulo;
       _descripcionController.text = liturgy.descripcion ?? '';
@@ -63,7 +71,7 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isNewLiturgy ? 'Nueva liturgia' : 'Editar liturgia'),
+        title: Text(_isNewLiturgy ? 'Nuevo culto' : 'Editar culto'),
         actions: [
           if (!_isNewLiturgy)
             IconButton(
@@ -79,7 +87,7 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
         ],
       ),
       body: _isLoading
-          ? const LoadingWidget(message: 'Cargando liturgia...')
+          ? const LoadingWidget(message: 'Cargando culto...')
           : Consumer<LiturgyProvider>(
               builder: (context, provider, child) {
                 if (provider.error != null) {
@@ -91,30 +99,44 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
 
                 final liturgy = provider.currentLiturgy;
                 
-                return Row(
-                  children: [
-                    // Panel izquierdo: Información de la liturgia
-                    Expanded(
-                      flex: 2,
-                      child: _buildInfoPanel(liturgy),
-                    ),
+                return ResponsiveBuilder(
+                  builder: (context, info) {
+                    // En móvil o tablet portrait: usar tabs
+                    if (info.isMobile || (info.isTablet && info.isPortrait)) {
+                      return _MobileLayout(
+                        liturgy: liturgy,
+                        infoPanel: _buildInfoPanel(liturgy, info),
+                        blocksPanel: _buildBlocksPanel(liturgy, info),
+                      );
+                    }
                     
-                    // Panel derecho: Bloques
-                    Expanded(
-                      flex: 3,
-                      child: _buildBlocksPanel(liturgy),
-                    ),
-                  ],
+                    // En tablet landscape o desktop: usar panel dual
+                    return Row(
+                      children: [
+                        // Panel izquierdo: Información de la liturgia
+                        Expanded(
+                          flex: 2,
+                          child: _buildInfoPanel(liturgy, info),
+                        ),
+                        
+                        // Panel derecho: Bloques
+                        Expanded(
+                          flex: 3,
+                          child: _buildBlocksPanel(liturgy, info),
+                        ),
+                      ],
+                    );
+                  },
                 );
               },
             ),
     );
   }
 
-  Widget _buildInfoPanel(Liturgy? liturgy) {
+  Widget _buildInfoPanel(Liturgy? liturgy, ResponsiveInfo info) {
     return Container(
       color: Colors.grey[50],
-      padding: const EdgeInsets.all(24),
+      padding: info.adaptivePadding,
       child: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -123,9 +145,11 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
             children: [
               Text(
                 'Información del culto',
-                style: Theme.of(context).textTheme.headlineMedium,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontSize: info.fontSizeFor(20),
+                ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: info.adaptiveSpacing * 2),
               
               // Título
               TextFormField(
@@ -142,7 +166,7 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
                   return null;
                 },
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: info.adaptiveSpacing),
               
               // Fecha
               InkWell(
@@ -158,7 +182,7 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: info.adaptiveSpacing),
               
               // Descripción
               TextFormField(
@@ -170,7 +194,7 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
                 ),
                 maxLines: 3,
               ),
-              const SizedBox(height: 32),
+              SizedBox(height: info.adaptiveSpacing * 2),
               
               // Duración total
               if (liturgy != null && liturgy.bloques.isNotEmpty) ...[
@@ -191,24 +215,27 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
                           Icon(
                             Icons.access_time,
                             color: Theme.of(context).colorScheme.primary,
-                            size: 28,
+                            size: info.valueByDevice(mobile: 24, tablet: 28, desktop: 28),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: info.adaptiveSpacing),
                           Text(
                             'Duración total',
-                            style: Theme.of(context).textTheme.titleLarge,
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontSize: info.fontSizeFor(18),
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: info.adaptiveSpacing),
                       Text(
                         liturgy.duracionTotalFormateada,
                         style: Theme.of(context).textTheme.displayMedium?.copyWith(
                               color: Theme.of(context).colorScheme.primary,
                               fontWeight: FontWeight.bold,
+                              fontSize: info.fontSizeFor(32),
                             ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: info.adaptiveSpacing / 2),
                       Text(
                         '${liturgy.duracionTotalMinutos} minutos',
                         style: Theme.of(context).textTheme.bodyMedium,
@@ -224,11 +251,11 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
     );
   }
 
-  Widget _buildBlocksPanel(Liturgy? liturgy) {
+  Widget _buildBlocksPanel(Liturgy? liturgy, ResponsiveInfo info) {
     if (liturgy == null) {
       return const EmptyStateWidget(
         icon: Icons.event_note,
-        title: 'Guarda la liturgia',
+        title: 'Guarda el culto',
         subtitle: 'Primero guarda la información básica para agregar bloques',
       );
     }
@@ -250,19 +277,23 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
       children: [
         // Header
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: info.adaptivePadding,
           color: Colors.white,
           child: Row(
             children: [
-              Text(
-                'Bloques del culto',
-                style: Theme.of(context).textTheme.headlineMedium,
+              Expanded(
+                child: Text(
+                  'Bloques del culto',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontSize: info.fontSizeFor(20),
+                  ),
+                ),
               ),
-              const Spacer(),
+              SizedBox(width: info.adaptiveSpacing),
               ElevatedButton.icon(
                 onPressed: () => _addBlock(liturgy.id),
                 icon: const Icon(Icons.add),
-                label: const Text('Agregar bloque'),
+                label: Text(info.isMobile ? 'Agregar' : 'Agregar bloque'),
               ),
             ],
           ),
@@ -271,7 +302,7 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
         // Lista de bloques
         Expanded(
           child: ReorderableListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: info.adaptivePadding,
             itemCount: liturgy.bloques.length,
             onReorder: (oldIndex, newIndex) =>
                 _reorderBlocks(liturgy, oldIndex, newIndex),
@@ -308,6 +339,7 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
   Future<void> _saveLiturgy() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final l10n = AppLocalizations.of(context);
     final provider = context.read<LiturgyProvider>();
     
     if (_isNewLiturgy) {
@@ -325,22 +357,48 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
 
       final liturgyId = await provider.createLiturgy(liturgy);
       
-      if (liturgyId != null && mounted) {
+      if (!mounted) return;
+      
+      if (liturgyId != null && liturgyId.isNotEmpty) {
         setState(() => _isNewLiturgy = false);
         await provider.loadLiturgy(liturgyId);
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Liturgia creada correctamente'),
+            SnackBar(
+              content: Text(l10n.translate('liturgyCreatedSuccess')),
               backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
             ),
           );
         }
+      } else {
+        // Error al crear
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.errorSavingLiturgy),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
       }
     } else {
       // Actualizar liturgia existente
-      final currentLiturgy = provider.currentLiturgy!;
+      final currentLiturgy = provider.currentLiturgy;
+      
+      if (currentLiturgy == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.errorSavingLiturgy),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+      
       final updatedLiturgy = currentLiturgy.copyWith(
         titulo: _tituloController.text,
         fecha: _selectedDate,
@@ -352,11 +410,16 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
 
       final success = await provider.updateLiturgy(updatedLiturgy);
       
-      if (success && mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Liturgia actualizada correctamente'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: Text(
+              success 
+                ? l10n.translate('liturgyUpdatedSuccess') 
+                : l10n.errorSavingLiturgy
+            ),
+            backgroundColor: success ? Colors.green : Colors.red,
+            duration: Duration(seconds: success ? 2 : 3),
           ),
         );
       }
@@ -381,16 +444,26 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
           );
 
       if (blockId != null && mounted) {
-        await provider.refreshCurrentLiturgy();
+        // Forzar recarga completa de la liturgia
+        await provider.loadLiturgy(liturgyId);
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Bloque agregado correctamente'),
               backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
             ),
           );
         }
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error al agregar bloque'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
       }
     }
   }
@@ -407,14 +480,26 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
             updatedBlock,
           );
 
-      if (success && mounted) {
-        await context.read<LiturgyProvider>().refreshCurrentLiturgy();
-        
-        if (mounted) {
+      if (mounted) {
+        if (success) {
+          // Forzar recarga completa de la liturgia
+          await context.read<LiturgyProvider>().loadLiturgy(liturgyId);
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Bloque actualizado correctamente'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Bloque actualizado correctamente'),
-              backgroundColor: Colors.green,
+              content: Text('Error al actualizar bloque'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
             ),
           );
         }
@@ -437,14 +522,26 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
             blockId,
           );
 
-      if (success && mounted) {
-        await context.read<LiturgyProvider>().refreshCurrentLiturgy();
-        
-        if (mounted) {
+      if (mounted) {
+        if (success) {
+          // Forzar recarga completa de la liturgia
+          await context.read<LiturgyProvider>().loadLiturgy(liturgyId);
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Bloque eliminado correctamente'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Bloque eliminado correctamente'),
-              backgroundColor: Colors.green,
+              content: Text('Error al eliminar bloque'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
             ),
           );
         }
@@ -489,6 +586,51 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
   }
 }
 
+/// Layout para móviles que usa tabs en lugar de panel dual
+class _MobileLayout extends StatelessWidget {
+  final Liturgy? liturgy;
+  final Widget infoPanel;
+  final Widget blocksPanel;
+
+  const _MobileLayout({
+    required this.liturgy,
+    required this.infoPanel,
+    required this.blocksPanel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (liturgy == null) {
+      return infoPanel;
+    }
+
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          Container(
+            color: Colors.white,
+            child: const TabBar(
+              tabs: [
+                Tab(icon: Icon(Icons.info_outline), text: 'Información'),
+                Tab(icon: Icon(Icons.list), text: 'Bloques'),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                infoPanel,
+                blocksPanel,
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Card para mostrar un bloque
 class _BlockCard extends StatelessWidget {
   final LiturgyBlock block;
@@ -506,120 +648,178 @@ class _BlockCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: onEdit,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+    return ResponsiveBuilder(
+      builder: (context, info) {
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: InkWell(
+            onTap: onEdit,
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: info.valueByDevice(
+                mobile: const EdgeInsets.all(12),
+                tablet: const EdgeInsets.all(16),
+                desktop: const EdgeInsets.all(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Icono de tipo
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      _getBlockIcon(block.tipo),
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  
-                  // Tipo y descripción
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          block.tipo.displayName,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                  Row(
+                    children: [
+                      // Icono de tipo
+                      Container(
+                        padding: EdgeInsets.all(info.isMobile ? 6 : 8),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        if (block.descripcion.isNotEmpty)
-                          Text(
-                            block.descripcion,
-                            style: Theme.of(context).textTheme.bodyMedium,
+                        child: Icon(
+                          _getBlockIcon(block.tipo),
+                          color: Theme.of(context).colorScheme.primary,
+                          size: info.isMobile ? 20 : 24,
+                        ),
+                      ),
+                      SizedBox(width: info.adaptiveSpacing),
+                      
+                      // Tipo y descripción
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              block.tipo.displayName,
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: info.fontSizeFor(16),
+                                  ),
+                            ),
+                            if (block.descripcion != null && block.descripcion!.isNotEmpty)
+                              Text(
+                                block.descripcion!,
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  fontSize: info.fontSizeFor(14),
+                                ),
+                                maxLines: info.isMobile ? 1 : 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Duración
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: info.isMobile ? 8 : 12,
+                          vertical: info.isMobile ? 4 : 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${block.duracionMinutos} min',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange,
+                            fontSize: info.fontSizeFor(12),
                           ),
+                        ),
+                      ),
+                      
+                      // Botones
+                      if (!info.isMobile) ...[
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline),
+                          onPressed: onDelete,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                        const Icon(Icons.drag_handle),
+                      ],
+                    ],
+                  ),
+                  
+                  // Fila de acciones en móvil
+                  if (info.isMobile) ...[
+                    SizedBox(height: info.adaptiveSpacing / 2),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline),
+                          onPressed: onDelete,
+                          color: Theme.of(context).colorScheme.error,
+                          iconSize: 20,
+                        ),
+                        const Icon(Icons.drag_handle, size: 20),
                       ],
                     ),
-                  ),
+                  ],
                   
-                  // Duración
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
+                  // Responsables
+                  if (block.responsables.isNotEmpty) ...[
+                    SizedBox(height: info.adaptiveSpacing),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: block.responsables
+                          .map((r) => Chip(
+                                label: Text(
+                                  r,
+                                  style: TextStyle(
+                                    fontSize: info.fontSizeFor(12),
+                                  ),
+                                ),
+                                avatar: Icon(
+                                  Icons.person,
+                                  size: info.isMobile ? 14 : 16,
+                                ),
+                                visualDensity: info.isMobile
+                                    ? VisualDensity.compact
+                                    : VisualDensity.standard,
+                              ))
+                          .toList(),
                     ),
-                    child: Text(
-                      '${block.duracionMinutos} min',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.orange,
-                      ),
-                    ),
-                  ),
+                  ],
                   
-                  // Botones
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: onDelete,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                  const Icon(Icons.drag_handle),
+                  // Canciones (si es adoración)
+                  if (block.isAdoracion && block.canciones.isNotEmpty) ...[
+                    SizedBox(height: info.adaptiveSpacing),
+                    ...block.canciones.map((song) => Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.music_note,
+                                size: info.isMobile ? 14 : 16,
+                              ),
+                              SizedBox(width: info.adaptiveSpacing / 2),
+                              Expanded(
+                                child: Text(
+                                  song.nombre,
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontSize: info.fontSizeFor(14),
+                                  ),
+                                ),
+                              ),
+                              if (song.tono != null) ...[
+                                SizedBox(width: info.adaptiveSpacing / 2),
+                                Text(
+                                  '(${song.tono})',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    fontSize: info.fontSizeFor(12),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        )),
+                  ],
                 ],
               ),
-              
-              // Responsables
-              if (block.responsables.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  children: block.responsables
-                      .map((r) => Chip(
-                            label: Text(r),
-                            avatar: const Icon(Icons.person, size: 16),
-                          ))
-                      .toList(),
-                ),
-              ],
-              
-              // Canciones (si es adoración)
-              if (block.isAdoracion && block.canciones.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                ...block.canciones.map((song) => Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.music_note, size: 16),
-                          const SizedBox(width: 8),
-                          Text(
-                            song.nombre,
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                          if (song.tono != null) ...[
-                            const SizedBox(width: 8),
-                            Text(
-                              '(${song.tono})',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ],
-                        ],
-                      ),
-                    )),
-              ],
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -671,7 +871,7 @@ class _BlockDialogState extends State<_BlockDialog> {
     super.initState();
     if (widget.block != null) {
       _selectedType = widget.block!.tipo;
-      _descripcionController.text = widget.block!.descripcion;
+      _descripcionController.text = widget.block!.descripcion ?? '';
       _responsablesController.text = widget.block!.responsables.join(', ');
       _comentariosController.text = widget.block!.comentarios ?? '';
       _duracionController.text = widget.block!.duracionMinutos.toString();
@@ -706,7 +906,7 @@ class _BlockDialogState extends State<_BlockDialog> {
               children: [
                 // Tipo
                 DropdownButtonFormField<BlockType>(
-                  value: _selectedType,
+                  initialValue: _selectedType,
                   decoration: const InputDecoration(
                     labelText: 'Tipo de bloque',
                     prefixIcon: Icon(Icons.category),
@@ -731,12 +931,6 @@ class _BlockDialogState extends State<_BlockDialog> {
                     hintText: 'Ej: Tiempo de alabanza congregacional',
                     prefixIcon: Icon(Icons.description),
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'La descripción es requerida';
-                    }
-                    return null;
-                  },
                 ),
                 const SizedBox(height: 16),
                 
@@ -785,16 +979,18 @@ class _BlockDialogState extends State<_BlockDialog> {
                 if (_selectedType == BlockType.adoracionAlabanza) ...[
                   const SizedBox(height: 24),
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         'Canciones',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
-                      const Spacer(),
-                      TextButton.icon(
-                        onPressed: _addSong,
-                        icon: const Icon(Icons.add),
-                        label: const Text('Agregar canción'),
+                      Flexible(
+                        child: TextButton.icon(
+                          onPressed: _addSong,
+                          icon: const Icon(Icons.add),
+                          label: const Text('Agregar canción'),
+                        ),
                       ),
                     ],
                   ),
@@ -854,7 +1050,9 @@ class _BlockDialogState extends State<_BlockDialog> {
     final block = LiturgyBlock(
       id: widget.block?.id ?? const Uuid().v4(),
       tipo: _selectedType,
-      descripcion: _descripcionController.text,
+      descripcion: _descripcionController.text.isEmpty
+          ? null
+          : _descripcionController.text,
       responsables: responsables,
       comentarios: _comentariosController.text.isEmpty
           ? null

@@ -3,11 +3,11 @@ import 'package:worshippro/models/liturgy.dart';
 import 'package:worshippro/models/liturgy_block.dart';
 import 'package:worshippro/models/song.dart';
 
-/// Servicio para gestionar las liturgias en Firebase Firestore
+/// Servicio para gestionar los cultos en Firebase Firestore
 class LiturgyService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Colección principal de liturgias
+  /// Colección principal de cultos
   CollectionReference get _liturgiesCollection =>
       _firestore.collection('liturgias');
 
@@ -18,10 +18,26 @@ class LiturgyService {
     return _liturgiesCollection
         .orderBy('fecha', descending: true)
         .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        return Liturgy.fromMap(doc.data() as Map<String, dynamic>, doc.id);
-      }).toList();
+        .asyncMap((snapshot) async {
+      final liturgies = <Liturgy>[];
+      
+      for (var doc in snapshot.docs) {
+        final liturgy = Liturgy.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+        
+        // Cargar solo la información básica de los bloques (sin canciones)
+        final blocksSnapshot = await doc.reference
+            .collection('bloques')
+            .orderBy('orden')
+            .get();
+        
+        final blocks = blocksSnapshot.docs.map((blockDoc) {
+          return LiturgyBlock.fromMap(blockDoc.data(), blockDoc.id);
+        }).toList();
+        
+        liturgies.add(liturgy.copyWith(bloques: blocks));
+      }
+      
+      return liturgies;
     });
   }
 

@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:worshippro/models/liturgy_block.dart';
 
-/// Modelo para representar una liturgia completa
+/// Modelo para representar un culto completo
 class Liturgy {
   final String id;
   final String titulo;

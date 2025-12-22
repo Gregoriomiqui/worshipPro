@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:worshippro/models/block_type.dart';
 import 'package:worshippro/models/liturgy.dart';
 import 'package:worshippro/models/liturgy_block.dart';
+import 'package:worshippro/utils/responsive_utils.dart';
 
 /// Pantalla de modo presentación para el culto
 class PresentationModeScreen extends StatefulWidget {
@@ -40,7 +41,7 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
           title: const Text('Modo presentación'),
         ),
         body: const Center(
-          child: Text('No hay bloques en esta liturgia'),
+          child: Text('No hay bloques en este culto'),
         ),
       );
     }
@@ -59,85 +60,98 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
         child: Stack(
           children: [
             // Contenido principal
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(48),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header con título de la liturgia
-                    _buildHeader(),
-                    
-                    const SizedBox(height: 48),
-                    
-                    // Bloque actual (principal)
-                    Expanded(
-                      flex: 3,
-                      child: _buildCurrentBlock(currentBlock),
+            ResponsiveBuilder(
+              builder: (context, info) {
+                return SafeArea(
+                  child: Padding(
+                    padding: EdgeInsets.all(info.paddingValue * 2),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header con título de la liturgia
+                        _buildHeader(info),
+                        
+                        SizedBox(height: info.adaptiveSpacing * 3),
+                        
+                        // Bloque actual (principal)
+                        Expanded(
+                          flex: info.isMobile ? 4 : 3,
+                          child: _buildCurrentBlock(currentBlock, info),
+                        ),
+                        
+                        SizedBox(height: info.adaptiveSpacing * 2),
+                        
+                        // Bloque siguiente (vista previa) - ocultar en móvil portrait
+                        if (nextBlock != null && (!info.isMobile || info.isLandscape))
+                          Expanded(
+                            flex: 1,
+                            child: _buildNextBlock(nextBlock, info),
+                          ),
+                      ],
                     ),
-                    
-                    const SizedBox(height: 32),
-                    
-                    // Bloque siguiente (vista previa)
-                    if (nextBlock != null)
-                      Expanded(
-                        flex: 1,
-                        child: _buildNextBlock(nextBlock),
-                      ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             ),
             
             // Controles de navegación
-            if (_showControls) _buildControls(),
+            if (_showControls)
+              ResponsiveBuilder(
+                builder: (context, info) => _buildControls(info),
+              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(ResponsiveInfo info) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              padding: EdgeInsets.symmetric(
+                horizontal: info.fontSizeFor(20),
+                vertical: info.fontSizeFor(10),
+              ),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 '${_currentBlockIndex + 1} / ${widget.liturgy.bloques.length}',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white70,
-                  fontSize: 24,
+                  fontSize: info.fontSizeFor(24),
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ),
             const Spacer(),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              padding: EdgeInsets.symmetric(
+                horizontal: info.fontSizeFor(20),
+                vertical: info.fontSizeFor(10),
+              ),
               decoration: BoxDecoration(
                 color: Colors.orange.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.access_time,
                     color: Colors.orange,
-                    size: 28,
+                    size: info.iconSizeFor(28),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: info.adaptiveSpacing),
                   Text(
                     widget.liturgy.duracionTotalFormateada,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.orange,
-                      fontSize: 24,
+                      fontSize: info.fontSizeFor(24),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -146,12 +160,12 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: info.adaptiveSpacing),
         Text(
           widget.liturgy.titulo,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white70,
-            fontSize: 28,
+            fontSize: info.fontSizeFor(28),
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -159,15 +173,15 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
     );
   }
 
-  Widget _buildCurrentBlock(LiturgyBlock block) {
+  Widget _buildCurrentBlock(LiturgyBlock block, ResponsiveInfo info) {
     return Container(
-      padding: const EdgeInsets.all(48),
+      padding: EdgeInsets.all(info.paddingValue * 2),
       decoration: BoxDecoration(
         color: const Color(0xFF374151),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(info.isMobile ? 16 : 24),
         border: Border.all(
           color: const Color(0xFF6366F1),
-          width: 4,
+          width: info.isMobile ? 2 : 4,
         ),
       ),
       child: Column(
@@ -175,7 +189,10 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
         children: [
           // Etiqueta de tipo
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            padding: EdgeInsets.symmetric(
+              horizontal: info.paddingValue,
+              vertical: info.paddingValue * 0.5,
+            ),
             decoration: BoxDecoration(
               color: const Color(0xFF6366F1),
               borderRadius: BorderRadius.circular(12),
@@ -186,14 +203,14 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
                 Icon(
                   _getBlockIcon(block.tipo),
                   color: Colors.white,
-                  size: 32,
+                  size: info.iconSizeFor(32),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: info.adaptiveSpacing),
                 Text(
                   block.tipo.displayName.toUpperCase(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 24,
+                    fontSize: info.fontSizeFor(24),
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1.5,
                   ),
@@ -202,45 +219,53 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
             ),
           ),
           
-          const SizedBox(height: 32),
+          SizedBox(height: info.adaptiveSpacing * 2),
           
-          // Descripción
+          // Descripción o tipo de bloque
           Text(
-            block.descripcion,
-            style: const TextStyle(
+            block.descripcion ?? block.tipo.displayName,
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 48,
+              fontSize: info.fontSizeFor(48),
               fontWeight: FontWeight.bold,
               height: 1.3,
             ),
+            maxLines: info.isMobile ? 3 : null,
+            overflow: info.isMobile ? TextOverflow.ellipsis : null,
           ),
           
           const Spacer(),
           
           // Información adicional
-          Row(
+          Wrap(
+            spacing: info.adaptiveSpacing,
+            runSpacing: info.adaptiveSpacing,
             children: [
               // Duración
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: EdgeInsets.symmetric(
+                  horizontal: info.paddingValue,
+                  vertical: info.paddingValue * 0.66,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.orange.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.orange, width: 2),
                 ),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.access_time,
                       color: Colors.orange,
-                      size: 32,
+                      size: info.iconSizeFor(32),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: info.adaptiveSpacing * 0.5),
                     Text(
-                      '${block.duracionMinutos} minutos',
-                      style: const TextStyle(
+                      '${block.duracionMinutos} min',
+                      style: TextStyle(
                         color: Colors.orange,
-                        fontSize: 28,
+                        fontSize: info.fontSizeFor(28),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -248,38 +273,39 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
                 ),
               ),
               
-              const SizedBox(width: 24),
-              
               // Responsables
               if (block.responsables.isNotEmpty)
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.person,
-                          color: Colors.white70,
-                          size: 32,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            block.responsables.join(', '),
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 24,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: info.paddingValue,
+                    vertical: info.paddingValue * 0.66,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.person,
+                        color: Colors.white70,
+                        size: info.iconSizeFor(32),
+                      ),
+                      SizedBox(width: info.adaptiveSpacing * 0.5),
+                      Flexible(
+                        child: Text(
+                          block.responsables.join(', '),
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: info.fontSizeFor(24),
+                            fontWeight: FontWeight.w600,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
             ],
@@ -287,9 +313,9 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
           
           // Canciones (si es adoración)
           if (block.isAdoracion && block.canciones.isNotEmpty) ...[
-            const SizedBox(height: 24),
+            SizedBox(height: info.adaptiveSpacing),
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(info.paddingValue),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(12),
@@ -297,40 +323,42 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'CANCIONES',
                     style: TextStyle(
                       color: Colors.white70,
-                      fontSize: 20,
+                      fontSize: info.fontSizeFor(20),
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.2,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: info.adaptiveSpacing),
                   ...block.canciones.map((song) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
+                        padding: EdgeInsets.only(bottom: info.adaptiveSpacing * 0.5),
                         child: Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.music_note,
                               color: Colors.white70,
-                              size: 28,
+                              size: info.iconSizeFor(28),
                             ),
-                            const SizedBox(width: 16),
+                            SizedBox(width: info.adaptiveSpacing),
                             Expanded(
                               child: Text(
                                 song.nombre,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 28,
+                                  fontSize: info.fontSizeFor(28),
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             if (song.tono != null)
                               Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: info.paddingValue * 0.66,
+                                  vertical: info.paddingValue * 0.33,
                                 ),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withOpacity(0.1),
@@ -338,9 +366,9 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
                                 ),
                                 child: Text(
                                   song.tono!,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: Colors.white70,
-                                    fontSize: 20,
+                                    fontSize: info.fontSizeFor(20),
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -355,9 +383,9 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
           
           // Comentarios
           if (block.comentarios != null && block.comentarios!.isNotEmpty) ...[
-            const SizedBox(height: 24),
+            SizedBox(height: info.adaptiveSpacing),
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(info.paddingValue),
               decoration: BoxDecoration(
                 color: Colors.yellow.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
@@ -365,19 +393,22 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.info_outline,
                     color: Colors.yellow,
-                    size: 32,
+                    size: info.iconSizeFor(32),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: info.adaptiveSpacing),
                   Expanded(
                     child: Text(
                       block.comentarios!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.yellow,
-                        fontSize: 22,
+                        fontSize: info.fontSizeFor(24),
+                        fontWeight: FontWeight.w600,
                       ),
+                      maxLines: info.isMobile ? 2 : null,
+                      overflow: info.isMobile ? TextOverflow.ellipsis : null,
                     ),
                   ),
                 ],
@@ -389,9 +420,9 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
     );
   }
 
-  Widget _buildNextBlock(LiturgyBlock block) {
+  Widget _buildNextBlock(LiturgyBlock block, ResponsiveInfo info) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(info.paddingValue),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(16),
@@ -399,30 +430,32 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'SIGUIENTE',
             style: TextStyle(
               color: Colors.white38,
-              fontSize: 18,
+              fontSize: info.fontSizeFor(18),
               fontWeight: FontWeight.bold,
               letterSpacing: 1.2,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: info.adaptiveSpacing * 0.5),
           Row(
             children: [
               Icon(
                 _getBlockIcon(block.tipo),
                 color: Colors.white54,
-                size: 24,
+                size: info.iconSizeFor(24),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: info.adaptiveSpacing * 0.5),
               Expanded(
                 child: Text(
-                  '${block.tipo.displayName}: ${block.descripcion}',
-                  style: const TextStyle(
+                  block.descripcion != null && block.descripcion!.isNotEmpty
+                      ? '${block.tipo.displayName}: ${block.descripcion}'
+                      : block.tipo.displayName,
+                  style: TextStyle(
                     color: Colors.white54,
-                    fontSize: 22,
+                    fontSize: info.fontSizeFor(22),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -430,9 +463,9 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
               ),
               Text(
                 '${block.duracionMinutos} min',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white38,
-                  fontSize: 20,
+                  fontSize: info.fontSizeFor(20),
                 ),
               ),
             ],
@@ -442,13 +475,13 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
     );
   }
 
-  Widget _buildControls() {
+  Widget _buildControls(ResponsiveInfo info) {
     return Positioned(
-      bottom: 48,
-      left: 48,
-      right: 48,
+      bottom: info.paddingValue * 2,
+      left: info.paddingValue * 2,
+      right: info.paddingValue * 2,
       child: Container(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(info.paddingValue),
         decoration: BoxDecoration(
           color: Colors.black.withOpacity(0.7),
           borderRadius: BorderRadius.circular(16),
@@ -460,33 +493,36 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
             IconButton(
               onPressed: _currentBlockIndex > 0 ? _previousBlock : null,
               icon: const Icon(Icons.arrow_back),
-              iconSize: 48,
+              iconSize: info.iconSizeFor(48),
               color: _currentBlockIndex > 0 ? Colors.white : Colors.white38,
               tooltip: 'Anterior',
             ),
             
-            const SizedBox(width: 48),
+            SizedBox(width: info.adaptiveSpacing * 2),
             
             // Botón salir
             ElevatedButton.icon(
               onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.close),
-              label: const Text('Salir'),
+              icon: Icon(Icons.close, size: info.iconSizeFor(24)),
+              label: Text(
+                'Salir',
+                style: TextStyle(fontSize: info.fontSizeFor(18)),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 20,
+                padding: EdgeInsets.symmetric(
+                  horizontal: info.paddingValue * 1.33,
+                  vertical: info.paddingValue * 0.66,
                 ),
-                textStyle: const TextStyle(
-                  fontSize: 20,
+                textStyle: TextStyle(
+                  fontSize: info.fontSizeFor(18),
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
             
-            const SizedBox(width: 48),
+            SizedBox(width: info.adaptiveSpacing * 2),
             
             // Botón siguiente
             IconButton(
@@ -494,7 +530,7 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
                   ? _nextBlock
                   : null,
               icon: const Icon(Icons.arrow_forward),
-              iconSize: 48,
+              iconSize: info.iconSizeFor(48),
               color: _currentBlockIndex < widget.liturgy.bloques.length - 1
                   ? Colors.white
                   : Colors.white38,

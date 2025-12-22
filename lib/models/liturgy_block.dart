@@ -1,11 +1,11 @@
 import 'package:worshippro/models/block_type.dart';
 import 'package:worshippro/models/song.dart';
 
-/// Modelo para representar un bloque dentro de una liturgia
+/// Modelo para representar un bloque dentro de un culto
 class LiturgyBlock {
   final String id;
   final BlockType tipo;
-  final String descripcion;
+  final String? descripcion;
   final List<String> responsables;
   final String? comentarios;
   final int duracionMinutos;
@@ -15,7 +15,7 @@ class LiturgyBlock {
   LiturgyBlock({
     required this.id,
     required this.tipo,
-    required this.descripcion,
+    this.descripcion,
     required this.responsables,
     this.comentarios,
     required this.duracionMinutos,
@@ -31,7 +31,7 @@ class LiturgyBlock {
         (e) => e.name == map['tipo'],
         orElse: () => BlockType.otros,
       ),
-      descripcion: map['descripcion'] as String? ?? '',
+      descripcion: map['descripcion'] as String?,
       responsables: List<String>.from(map['responsables'] ?? []),
       comentarios: map['comentarios'] as String?,
       duracionMinutos: map['duracionMinutos'] as int? ?? 0,

@@ -2,7 +2,52 @@
 
 > Aplicación móvil para crear, organizar y presentar liturgias de cultos cristianos
 
-## 🎯 Descripción
+## 📚 Documentación Completa
+
+Esta carpeta contiene toda la documentación necesaria para entender, desarrollar y mantener WorshipPro:
+
+### 🚀 Para Empezar
+- **[QUICKSTART.md](QUICKSTART.md)** - Instalación rápida y primeros pasos
+- **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - Resumen ejecutivo del proyecto
+
+### 🏗️ Arquitectura y Desarrollo
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Arquitectura técnica detallada (MVVM, patrones, estructura)
+- **[API_REFERENCE.md](API_REFERENCE.md)** - Referencia completa de APIs, modelos y métodos
+- **[COMPONENT_GUIDE.md](COMPONENT_GUIDE.md)** - Guía de todos los widgets y componentes UI
+
+### 🔧 Configuración y Utilidades
+- **[FIREBASE_SETUP.md](FIREBASE_SETUP.md)** - Configuración completa de Firebase
+- **[COMMANDS.md](COMMANDS.md)** - Referencia de comandos útiles de Flutter y Git
+
+### 🐛 Mantenimiento
+- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Solución de problemas comunes
+- **[CHANGELOG.md](CHANGELOG.md)** - Registro de cambios y versiones
+
+---
+
+## 🤖 Guía Rápida para Agentes IA
+
+Si eres un agente de IA ayudando con este proyecto, sigue este flujo:
+
+### Primer Contacto
+1. **Lee primero:** [ARCHITECTURE.md](ARCHITECTURE.md) - Entiende la estructura MVVM, capas y flujo de datos
+2. **Luego revisa:** [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) - Contexto general del proyecto
+
+### Durante el Desarrollo
+- **Para implementar features:** [API_REFERENCE.md](API_REFERENCE.md) - Todos los Providers, Services y Modelos
+- **Para UI/UX:** [COMPONENT_GUIDE.md](COMPONENT_GUIDE.md) - Widgets disponibles y guías de estilo
+- **Para comandos:** [COMMANDS.md](COMMANDS.md) - Todos los comandos necesarios
+
+### Solución de Problemas
+- **Si hay errores:** [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Problemas comunes y soluciones
+- **Para Firebase:** [FIREBASE_SETUP.md](FIREBASE_SETUP.md) - Configuración paso a paso
+
+### Información Importante
+- **Cambios recientes:** [CHANGELOG.md](CHANGELOG.md) - Últimas modificaciones
+
+---
+
+## 🎯 Descripción del Proyecto
 
 **WorshipPro** es una aplicación Flutter diseñada específicamente para tablets, que permite a líderes de cultos cristianos crear y gestionar liturgias de forma simple y eficiente.
 
