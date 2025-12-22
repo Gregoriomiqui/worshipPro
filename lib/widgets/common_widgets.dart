@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:worshippro/l10n/app_localizations.dart';
 
 /// Widget para mostrar un estado de carga
 class LoadingWidget extends StatelessWidget {
@@ -105,7 +106,7 @@ class ErrorStateWidget extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'Error',
+              AppLocalizations.of(context).error,
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 12),
@@ -119,7 +120,7 @@ class ErrorStateWidget extends StatelessWidget {
               ElevatedButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Reintentar'),
+                label: Text(AppLocalizations.of(context).translate('retry')),
               ),
             ],
           ],
@@ -141,8 +142,8 @@ class ConfirmDialog extends StatelessWidget {
     super.key,
     required this.title,
     required this.message,
-    this.confirmText = 'Confirmar',
-    this.cancelText = 'Cancelar',
+    required this.confirmText,
+    required this.cancelText,
     this.isDestructive = false,
   });
 
@@ -174,8 +175,8 @@ class ConfirmDialog extends StatelessWidget {
     BuildContext context, {
     required String title,
     required String message,
-    String confirmText = 'Confirmar',
-    String cancelText = 'Cancelar',
+    required String confirmText,
+    required String cancelText,
     bool isDestructive = false,
   }) async {
     final result = await showDialog<bool>(

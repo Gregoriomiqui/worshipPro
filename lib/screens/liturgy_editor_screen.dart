@@ -88,6 +88,7 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(_isNewLiturgy ? 'Nuevo culto' : 'Editar culto'),
@@ -97,18 +98,18 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
             IconButton(
               icon: const Icon(Icons.save),
               onPressed: _saveLiturgy,
-              tooltip: 'Guardar',
+              tooltip: l10n.save,
             ),
           if (!_isNewLiturgy)
             IconButton(
               icon: const Icon(Icons.present_to_all),
               onPressed: _openPresentationMode,
-              tooltip: 'Modo presentación',
+              tooltip: l10n.presentationMode,
             ),
         ],
       ),
       body: _isLoading
-          ? const LoadingWidget(message: 'Cargando culto...')
+          ? LoadingWidget(message: l10n.translate('loadingLiturgy'))
           : Consumer<LiturgyProvider>(
               builder: (context, provider, child) {
                 if (provider.error != null) {
@@ -273,6 +274,8 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
   }
 
   Widget _buildBlocksPanel(Liturgy? liturgy, ResponsiveInfo info) {
+    final l10n = AppLocalizations.of(context);
+    
     if (liturgy == null) {
       return const EmptyStateWidget(
         icon: Icons.event_note,
@@ -314,7 +317,7 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
               ElevatedButton.icon(
                 onPressed: () => _addBlock(liturgy.id),
                 icon: const Icon(Icons.add),
-                label: Text(info.isMobile ? 'Agregar' : 'Agregar bloque'),
+                label: Text(info.isMobile ? l10n.add : l10n.translate('addBlockShort')),
               ),
             ],
           ),
@@ -543,11 +546,13 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
   }
 
   Future<void> _deleteBlock(String liturgyId, String blockId) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await ConfirmDialog.show(
       context,
-      title: 'Eliminar bloque',
-      message: '¿Estás seguro de que deseas eliminar este bloque?',
-      confirmText: 'Eliminar',
+      title: l10n.translate('confirmDeleteBlock'),
+      message: l10n.confirmDeleteBlock,
+      confirmText: l10n.delete,
+      cancelText: l10n.cancel,
       isDestructive: true,
     );
 
@@ -915,6 +920,8 @@ class _BlockCard extends StatelessWidget {
         return Icons.music_note;
       case BlockType.oracion:
         return Icons.favorite;
+      case BlockType.lecturaBiblica:
+        return Icons.book;
       case BlockType.reflexion:
         return Icons.menu_book;
       case BlockType.accionGracias:
@@ -979,6 +986,7 @@ class _BlockDialogState extends State<_BlockDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final screenWidth = MediaQuery.of(context).size.width;
     final dialogWidth = screenWidth > 900 ? 900.0 : screenWidth * 0.9;
     
@@ -1071,7 +1079,7 @@ class _BlockDialogState extends State<_BlockDialog> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Canciones',
+                        l10n.songs,
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       Flexible(
@@ -1106,8 +1114,10 @@ class _BlockDialogState extends State<_BlockDialog> {
                     LayoutBuilder(
                       builder: (context, constraints) {
                         final isNarrow = constraints.maxWidth < 600;
-                        return SizedBox(
-                          height: isNarrow ? 200 : 250,
+                        return Container(
+                          constraints: BoxConstraints(
+                            maxHeight: isNarrow ? 200 : 250,
+                          ),
                           child: ReorderableListView.builder(
                             shrinkWrap: true,
                             itemCount: _canciones.length,
@@ -1128,94 +1138,111 @@ class _BlockDialogState extends State<_BlockDialog> {
                                 child: ListTile(
                                   dense: isNarrow,
                                   contentPadding: EdgeInsets.symmetric(
-                                    horizontal: isNarrow ? 8 : 16,
+                                    horizontal: isNarrow ? 8 : 12,
                                     vertical: isNarrow ? 4 : 8,
                                   ),
-                                  leading: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        '${index + 1}.',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.grey,
-                                          fontSize: isNarrow ? 12 : 14,
-                                        ),
-                                      ),
-                                      SizedBox(width: isNarrow ? 4 : 8),
-                                      Icon(
-                                        Icons.music_note,
-                                        size: isNarrow ? 18 : 24,
-                                      ),
-                                    ],
-                                  ),
-                                  title: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          song.nombre,
+                                  leading: SizedBox(
+                                    width: isNarrow ? 40 : 50,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          '${index + 1}.',
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
-                                            fontSize: isNarrow ? 13 : 15,
+                                            color: Colors.grey,
+                                            fontSize: isNarrow ? 12 : 14,
                                           ),
-                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                      ),
-                                      if (song.tono != null) ...[
                                         SizedBox(width: isNarrow ? 4 : 8),
-                                        Container(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: isNarrow ? 6 : 8,
-                                            vertical: isNarrow ? 2 : 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.blue.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(4),
-                                            border: Border.all(color: Colors.blue),
-                                          ),
-                                          child: Text(
-                                            song.tono!,
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.blue,
-                                              fontSize: isNarrow ? 11 : 13,
+                                        Icon(
+                                          Icons.music_note,
+                                          size: isNarrow ? 18 : 24,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  title: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Flexible(
+                                            child: Text(
+                                              song.nombre,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: isNarrow ? 13 : 15,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                              maxLines: 1,
                                             ),
                                           ),
+                                          if (song.tono != null) ...[
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: isNarrow ? 6 : 8,
+                                                vertical: 2,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.blue.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(4),
+                                                border: Border.all(color: Colors.blue),
+                                              ),
+                                              child: Text(
+                                                song.tono!,
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.blue,
+                                                  fontSize: isNarrow ? 10 : 12,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                      if (song.autor != null) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'Autor: ${song.autor}',
+                                          style: TextStyle(
+                                            fontSize: isNarrow ? 11 : 13,
+                                            color: Colors.grey[600],
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
                                         ),
                                       ],
                                     ],
                                   ),
-                                  subtitle: song.autor != null
-                                      ? Text(
-                                          'Autor: ${song.autor}',
-                                          style: TextStyle(
-                                            fontSize: isNarrow ? 11 : 13,
+                                  trailing: SizedBox(
+                                    width: isNarrow ? 60 : 70,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        InkWell(
+                                          onTap: () {
+                                            setState(() => _canciones.remove(song));
+                                          },
+                                          child: Padding(
+                                            padding: EdgeInsets.all(isNarrow ? 4 : 8),
+                                            child: Icon(
+                                              Icons.delete,
+                                              size: isNarrow ? 20 : 24,
+                                              color: Colors.red[400],
+                                            ),
                                           ),
-                                          overflow: TextOverflow.ellipsis,
-                                        )
-                                      : null,
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      IconButton(
-                                        icon: Icon(
-                                          Icons.delete,
-                                          size: isNarrow ? 20 : 24,
                                         ),
-                                        padding: EdgeInsets.all(isNarrow ? 4 : 8),
-                                        constraints: BoxConstraints(
-                                          minWidth: isNarrow ? 32 : 40,
-                                          minHeight: isNarrow ? 32 : 40,
+                                        Icon(
+                                          Icons.drag_handle,
+                                          size: isNarrow ? 18 : 24,
+                                          color: Colors.grey[400],
                                         ),
-                                        onPressed: () {
-                                          setState(() => _canciones.remove(song));
-                                        },
-                                      ),
-                                      Icon(
-                                        Icons.drag_handle,
-                                        size: isNarrow ? 18 : 24,
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
                               );
@@ -1233,11 +1260,11 @@ class _BlockDialogState extends State<_BlockDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar'),
+          child: Text(l10n.cancel),
         ),
         ElevatedButton(
           onPressed: _saveBlock,
-          child: const Text('Guardar'),
+          child: Text(l10n.save),
         ),
       ],
     );

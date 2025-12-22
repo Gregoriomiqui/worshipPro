@@ -420,7 +420,7 @@ class _LiturgyCard extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.copy),
-              title: const Text('Duplicar'),
+              title: Text(l10n.translate('duplicate')),
               onTap: () {
                 Navigator.pop(context);
                 _duplicateLiturgy(context);

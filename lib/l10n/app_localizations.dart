@@ -30,6 +30,11 @@ class AppLocalizations {
       'save': 'Guardar',
       'edit': 'Editar',
       'add': 'Agregar',
+      'retry': 'Reintentar',
+      'confirm': 'Confirmar',
+      'duplicate': 'Duplicar',
+      'name': 'Nombre',
+      'information': 'Información',
       'search': 'Buscar',
       'settings': 'Configuración',
       'language': 'Idioma',
@@ -52,7 +57,9 @@ class AppLocalizations {
       'title': 'Título',
       'date': 'Fecha',
       'addBlock': 'Agregar Bloque',
+      'addBlockShort': 'Agregar bloque',
       'noBlocks': 'No hay bloques',
+      'loadingLiturgy': 'Cargando culto...',
       'noBlocksDesc': 'Agrega bloques para estructurar tu culto',
       'totalDuration': 'Duración total',
       
@@ -114,6 +121,11 @@ class AppLocalizations {
       'save': 'Save',
       'edit': 'Edit',
       'add': 'Add',
+      'retry': 'Retry',
+      'confirm': 'Confirm',
+      'duplicate': 'Duplicate',
+      'name': 'Name',
+      'information': 'Information',
       'search': 'Search',
       'settings': 'Settings',
       'language': 'Language',
@@ -136,7 +148,9 @@ class AppLocalizations {
       'title': 'Title',
       'date': 'Date',
       'addBlock': 'Add Block',
+      'addBlockShort': 'Add block',
       'noBlocks': 'No blocks',
+      'loadingLiturgy': 'Loading liturgy...',
       'noBlocksDesc': 'Add blocks to structure your liturgy',
       'totalDuration': 'Total duration',
       
@@ -203,6 +217,9 @@ class AppLocalizations {
   String get save => translate('save');
   String get edit => translate('edit');
   String get add => translate('add');
+  String get retry => translate('retry');
+  String get confirm => translate('confirm');
+  String get duplicate => translate('duplicate');
   String get search => translate('search');
   String get settings => translate('settings');
   String get language => translate('language');

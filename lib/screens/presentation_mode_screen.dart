@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:worshippro/l10n/app_localizations.dart';
 import 'package:worshippro/models/block_type.dart';
 import 'package:worshippro/models/liturgy.dart';
 import 'package:worshippro/models/liturgy_block.dart';
@@ -35,13 +36,15 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
     if (widget.liturgy.bloques.isEmpty) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Modo presentación'),
+          title: Text(l10n.presentationMode),
         ),
-        body: const Center(
-          child: Text('No hay bloques en este culto'),
+        body: Center(
+          child: Text(l10n.noBlocks),
         ),
       );
     }
@@ -76,7 +79,7 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
                         // Bloque actual (principal)
                         Expanded(
                           flex: info.isMobile ? 4 : 3,
-                          child: _buildCurrentBlock(currentBlock, info),
+                          child: _buildCurrentBlock(currentBlock, info, l10n),
                         ),
                         
                         SizedBox(height: info.adaptiveSpacing * 2),
@@ -85,7 +88,7 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
                         if (nextBlock != null && (!info.isMobile || info.isLandscape))
                           Expanded(
                             flex: 1,
-                            child: _buildNextBlock(nextBlock, info),
+                            child: _buildNextBlock(nextBlock, info, l10n),
                           ),
                       ],
                     ),
@@ -97,7 +100,7 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
             // Controles de navegación
             if (_showControls)
               ResponsiveBuilder(
-                builder: (context, info) => _buildControls(info),
+                builder: (context, info) => _buildControls(info, l10n),
               ),
           ],
         ),
@@ -173,7 +176,7 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
     );
   }
 
-  Widget _buildCurrentBlock(LiturgyBlock block, ResponsiveInfo info) {
+  Widget _buildCurrentBlock(LiturgyBlock block, ResponsiveInfo info, AppLocalizations l10n) {
     return Container(
       padding: EdgeInsets.all(info.paddingValue * 2),
       decoration: BoxDecoration(
@@ -324,7 +327,7 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'CANCIONES',
+                    l10n.songs.toUpperCase(),
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: info.fontSizeFor(20),
@@ -420,7 +423,7 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
     );
   }
 
-  Widget _buildNextBlock(LiturgyBlock block, ResponsiveInfo info) {
+  Widget _buildNextBlock(LiturgyBlock block, ResponsiveInfo info, AppLocalizations l10n) {
     return Container(
       padding: EdgeInsets.all(info.paddingValue),
       decoration: BoxDecoration(
@@ -431,7 +434,7 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'SIGUIENTE',
+            l10n.next.toUpperCase(),
             style: TextStyle(
               color: Colors.white38,
               fontSize: info.fontSizeFor(18),
@@ -475,7 +478,7 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
     );
   }
 
-  Widget _buildControls(ResponsiveInfo info) {
+  Widget _buildControls(ResponsiveInfo info, AppLocalizations l10n) {
     return Positioned(
       bottom: info.paddingValue * 2,
       left: info.paddingValue * 2,
@@ -495,7 +498,7 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
               icon: const Icon(Icons.arrow_back),
               iconSize: info.iconSizeFor(48),
               color: _currentBlockIndex > 0 ? Colors.white : Colors.white38,
-              tooltip: 'Anterior',
+              tooltip: l10n.previous,
             ),
             
             SizedBox(width: info.adaptiveSpacing * 2),
@@ -505,7 +508,7 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
               onPressed: () => Navigator.pop(context),
               icon: Icon(Icons.close, size: info.iconSizeFor(24)),
               label: Text(
-                'Salir',
+                l10n.exit,
                 style: TextStyle(fontSize: info.fontSizeFor(18)),
               ),
               style: ElevatedButton.styleFrom(
@@ -534,7 +537,7 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
               color: _currentBlockIndex < widget.liturgy.bloques.length - 1
                   ? Colors.white
                   : Colors.white38,
-              tooltip: 'Siguiente',
+              tooltip: l10n.next,
             ),
           ],
         ),
@@ -560,6 +563,8 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
         return Icons.music_note;
       case BlockType.oracion:
         return Icons.favorite;
+      case BlockType.lecturaBiblica:
+        return Icons.book;
       case BlockType.reflexion:
         return Icons.menu_book;
       case BlockType.accionGracias:
