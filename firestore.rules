@@ -12,19 +12,48 @@ service cloud.firestore {
     }
     
     function isMemberOf(organizationId) {
-      return isAuthenticated() && 
-             organizationId in getUserData().organizationIds;
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/organizations/$(organizationId)/members/$(request.auth.uid));
     }
     
     function isAdminOf(organizationId) {
       return isAuthenticated() && 
              get(/databases/$(database)/documents/organizations/$(organizationId)/members/$(request.auth.uid)).data.role == 'admin';
     }
+
+    function hasValidPendingInvitation(invitationId, organizationId) {
+      return invitationId is string &&
+             exists(/databases/$(database)/documents/invitations/$(invitationId)) &&
+             get(/databases/$(database)/documents/invitations/$(invitationId)).data.organizationId == organizationId &&
+             get(/databases/$(database)/documents/invitations/$(invitationId)).data.email == request.auth.token.email &&
+             get(/databases/$(database)/documents/invitations/$(invitationId)).data.status == 'pending';
+    }
     
     // Users collection
     match /users/{userId} {
       // Users can read/write their own document
       allow read, write: if isAuthenticated() && request.auth.uid == userId;
+
+      // Allow admins to remove a user from an organization they manage
+      allow update: if isAuthenticated() &&
+                       request.resource.data.removeOrganizationId is string &&
+                       isAdminOf(request.resource.data.removeOrganizationId) &&
+                       resource.data.organizationIds.hasAny([
+                         request.resource.data.removeOrganizationId
+                       ]) &&
+                       !request.resource.data.organizationIds.hasAny([
+                         request.resource.data.removeOrganizationId
+                       ]) &&
+                       request.resource.data.organizationIds.size() ==
+                           resource.data.organizationIds.size() - 1 &&
+                       request.resource.data.email == resource.data.email &&
+                       request.resource.data.displayName == resource.data.displayName &&
+                       request.resource.data.photoURL == resource.data.photoURL &&
+                       request.resource.data.activeOrganizationId ==
+                           resource.data.activeOrganizationId &&
+                       request.resource.data.authProviders ==
+                           resource.data.authProviders &&
+                       request.resource.data.createdAt == resource.data.createdAt;
       
       // Allow reading specific fields for invitations
       allow get: if isAuthenticated();
@@ -47,11 +76,16 @@ service cloud.firestore {
         // Read: if user is member of the organization
         allow read: if isMemberOf(organizationId);
         
-        // Create: admins, OR the org creator adding themselves as first member
+        // Create: admins, OR the org creator adding themselves as first member,
+        // OR invitee accepting a valid pending invitation
         allow create: if isAdminOf(organizationId) || 
                          (isAuthenticated() && 
                           get(/databases/$(database)/documents/organizations/$(organizationId)).data.createdBy == request.auth.uid &&
-                          memberId == request.auth.uid);
+                          memberId == request.auth.uid) ||
+                         (isAuthenticated() &&
+                          memberId == request.auth.uid &&
+                          request.resource.data.email == request.auth.token.email &&
+                          hasValidPendingInvitation(request.resource.data.invitationId, organizationId));
         
         // Update/Delete: only admins
         allow update, delete: if isAdminOf(organizationId);
