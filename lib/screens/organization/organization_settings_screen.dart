@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/organization_provider.dart';
 import '../../models/organization.dart';
 import '../../models/member.dart';
+import 'organization_selector_screen.dart';
 
 /// Pantalla de configuración de la organización (solo admins)
 class OrganizationSettingsScreen extends StatefulWidget {
@@ -185,6 +187,50 @@ class _OrganizationSettingsScreenState
     }
   }
 
+  Future<void> _handleChangeOrganization() async {
+    final authProvider = context.read<AuthProvider>();
+    final orgProvider = context.read<OrganizationProvider>();
+
+    if (authProvider.currentUserId == null) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(authProvider.currentUserId)
+          .update({
+        'activeOrganizationId': null,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      authProvider.updateActiveOrganization(null);
+
+      final refreshedUser = authProvider.currentUser;
+      if (refreshedUser != null) {
+        orgProvider.clear();
+        await orgProvider.loadUserOrganizations(refreshedUser.organizationIds);
+        await orgProvider.loadPendingInvitations(refreshedUser.email);
+      }
+
+      if (!mounted) return;
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const OrganizationSelectorScreen(),
+        ),
+        (_) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cambiar de iglesia: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final orgProvider = context.watch<OrganizationProvider>();
@@ -202,6 +248,13 @@ class _OrganizationSettingsScreenState
     return Scaffold(
       appBar: AppBar(
         title: const Text('Configuración'),
+        actions: [
+          TextButton.icon(
+            onPressed: _handleChangeOrganization,
+            icon: const Icon(Icons.swap_horiz),
+            label: const Text('Cambiar Iglesia'),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
