@@ -20,6 +20,11 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
   - UI completamente en español usa "culto" en lugar de "liturgia"
   - Nombres de código en inglés permanecen igual (buenas prácticas)
 
+- **Cambio de iglesia seleccionada**
+  - Nueva acción **Cambiar Iglesia** desde configuración de organización
+  - Permite volver al listado de iglesias para seleccionar otra
+  - No elimina membresía ni modifica miembros
+
 ---
 
 ## [1.1.0] - 2025

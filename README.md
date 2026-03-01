@@ -170,6 +170,7 @@ flutter build web          # Web
 ### 2. Organizaciones
 - **Crear organización** (iglesia) — el creador es Admin automáticamente
 - **Seleccionar organización** activa desde el selector
+- **Cambiar organización seleccionada** desde Configuración → **Cambiar Iglesia**
 - **Invitar miembros** por email con rol Admin o Miembro
 - **Gestionar configuración** de la organización (solo Admins)
 

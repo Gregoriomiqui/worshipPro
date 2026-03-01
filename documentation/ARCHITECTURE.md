@@ -66,7 +66,7 @@ lib/
 - **Pantallas de organización:**
   - `OrganizationSelectorScreen`: Selector de iglesia, crear nueva, ver invitaciones
   - `CreateOrganizationScreen`: Formulario de nueva organización
-  - `OrganizationSettingsScreen`: Gestión de miembros, roles e invitaciones
+  - `OrganizationSettingsScreen`: Gestión de miembros, roles e invitaciones, y acción para cambiar de iglesia seleccionada
   - `InvitationsScreen`: Lista de invitaciones pendientes
 
 - **Pantallas principales:**

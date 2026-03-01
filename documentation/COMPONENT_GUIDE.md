@@ -111,15 +111,17 @@ Pantalla para crear una nueva organización (iglesia).
 
 Pantalla de configuración de la organización (solo Admins).
 
-**Ubicación:** `lib/screens/organization_settings_screen.dart`
+**Ubicación:** `lib/screens/organization/organization_settings_screen.dart`
 
 **Características:**
 - Editar nombre y descripción
 - Ver lista de miembros con roles
 - Eliminar miembros (solo Admin)
 - Acceso a gestión de invitaciones
+- Acción **Cambiar Iglesia** para volver al selector sin abandonar membresía
 
 **Provider dependencies:**
+- `AuthProvider` — Usuario actual y organización activa
 - `OrganizationProvider` — Datos de organización y miembros
 
 ---
