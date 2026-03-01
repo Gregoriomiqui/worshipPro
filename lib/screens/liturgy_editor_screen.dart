@@ -29,6 +29,7 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
   final _tituloController = TextEditingController();
   final _descripcionController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
+  TimeOfDay? _selectedTime;
   bool _isLoading = false;
   bool _isNewLiturgy = true;
   Timer? _autoSaveTimer;
@@ -73,6 +74,15 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
       _tituloController.text = liturgy.titulo;
       _descripcionController.text = liturgy.descripcion ?? '';
       _selectedDate = liturgy.fecha;
+      if (liturgy.hora != null) {
+        final parts = liturgy.hora!.split(':');
+        if (parts.length == 2) {
+          _selectedTime = TimeOfDay(
+            hour: int.tryParse(parts[0]) ?? 0,
+            minute: int.tryParse(parts[1]) ?? 0,
+          );
+        }
+      }
     }
     
     setState(() => _isLoading = false);
@@ -190,19 +200,60 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
               ),
               SizedBox(height: info.adaptiveSpacing),
               
-              // Fecha
-              InkWell(
-                onTap: _selectDate,
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Fecha',
-                    prefixIcon: Icon(Icons.calendar_today),
+              // Fecha y Hora
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: InkWell(
+                      onTap: _selectDate,
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Fecha',
+                          prefixIcon: Icon(Icons.calendar_today),
+                        ),
+                        child: Text(
+                          DateFormat('EEEE, d MMMM yyyy', 'es_ES')
+                              .format(_selectedDate),
+                        ),
+                      ),
+                    ),
                   ),
-                  child: Text(
-                    DateFormat('EEEE, d MMMM yyyy', 'es_ES')
-                        .format(_selectedDate),
+                  SizedBox(width: info.adaptiveSpacing),
+                  Expanded(
+                    flex: 2,
+                    child: InkWell(
+                      onTap: _selectTime,
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: 'Hora',
+                          prefixIcon: const Icon(Icons.access_time),
+                          suffixIcon: _selectedTime != null
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 18),
+                                  onPressed: () {
+                                    setState(() => _selectedTime = null);
+                                    if (!_isNewLiturgy) {
+                                      _saveLiturgy(showSuccessMessage: false);
+                                    }
+                                  },
+                                )
+                              : null,
+                        ),
+                        child: Text(
+                          _selectedTime != null
+                              ? _selectedTime!.format(context)
+                              : 'Sin hora',
+                          style: _selectedTime == null
+                              ? TextStyle(
+                                  color: Theme.of(context).hintColor,
+                                )
+                              : null,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
               SizedBox(height: info.adaptiveSpacing),
               
@@ -364,6 +415,27 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
     }
   }
 
+  Future<void> _selectTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedTime ?? TimeOfDay.now(),
+      builder: (context, child) {
+        return Localizations.override(
+          context: context,
+          locale: const Locale('es', 'ES'),
+          child: child,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() => _selectedTime = picked);
+      if (!_isNewLiturgy) {
+        _saveLiturgy(showSuccessMessage: false);
+      }
+    }
+  }
+
   Future<void> _saveLiturgy({bool showSuccessMessage = true}) async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -376,6 +448,9 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
         id: const Uuid().v4(),
         titulo: _tituloController.text,
         fecha: _selectedDate,
+        hora: _selectedTime != null
+            ? '${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}'
+            : null,
         descripcion: _descripcionController.text.isEmpty
             ? null
             : _descripcionController.text,
@@ -434,6 +509,10 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
       final updatedLiturgy = currentLiturgy.copyWith(
         titulo: _tituloController.text,
         fecha: _selectedDate,
+        hora: _selectedTime != null
+            ? '${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}'
+            : null,
+        clearHora: _selectedTime == null,
         descripcion: _descripcionController.text.isEmpty
             ? null
             : _descripcionController.text,
@@ -465,40 +544,79 @@ class _LiturgyEditorScreenState extends State<LiturgyEditorScreen> {
     );
 
     if (block != null && mounted) {
-      final provider = context.read<LiturgyProvider>();
-      final currentBlocks = provider.currentLiturgy?.bloques ?? [];
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(width: 12),
+              Text('Agregando bloque...'),
+            ],
+          ),
+          duration: Duration(seconds: 15),
+        ),
+      );
       
-      final blockWithOrder = block.copyWith(orden: currentBlocks.length);
-      
-      final blockId = await context.read<BlockProvider>().createBlock(
-            liturgyId,
-            blockWithOrder,
-          );
+      try {
+        final provider = context.read<LiturgyProvider>();
+        final currentBlocks = provider.currentLiturgy?.bloques ?? [];
+        
+        final blockWithOrder = block.copyWith(orden: currentBlocks.length);
+        
+        final blockId = await context.read<BlockProvider>().createBlock(
+              liturgyId,
+              blockWithOrder,
+            );
 
-      if (blockId != null && mounted) {
-        // Forzar recarga completa de la liturgia
-        await provider.loadLiturgy(liturgyId);
-        
-        // Auto-guardar la liturgia después de agregar el bloque (sin mensaje)
-        await _saveLiturgy(showSuccessMessage: false);
-        
-        if (mounted) {
+        if (blockId != null && mounted) {
+          // Forzar recarga completa de la liturgia
+          await provider.loadLiturgy(liturgyId);
+          
+          // Auto-guardar la liturgia después de agregar el bloque (sin mensaje)
+          await _saveLiturgy(showSuccessMessage: false);
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).clearSnackBars();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Bloque agregado'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).clearSnackBars();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Bloque agregado y culto guardado'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 2),
+              content: Text('Error al agregar bloque'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
             ),
           );
         }
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error al agregar bloque'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).clearSnackBars();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          ScaffoldMessenger.of(context).clearSnackBars();
+        }
       }
     }
   }
@@ -1350,53 +1468,77 @@ class _SongDialogState extends State<_SongDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final screenHeight = mediaQuery.size.height;
+    final keyboardHeight = mediaQuery.viewInsets.bottom;
+    final isLandscape = mediaQuery.orientation == Orientation.landscape;
+    
+    // Calcular altura disponible restando el teclado
+    final availableHeight = screenHeight - keyboardHeight;
+    final maxDialogHeight = isLandscape 
+        ? availableHeight * 0.6  // 60% de altura disponible en horizontal
+        : availableHeight * 0.7; // 70% de altura disponible en vertical
+    
     return AlertDialog(
       title: const Text('Nueva canción'),
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: _nombreController,
-              decoration: const InputDecoration(
-                labelText: 'Nombre',
-                prefixIcon: Icon(Icons.music_note),
+      contentPadding: const EdgeInsets.fromLTRB(24.0, 20.0, 24.0, 0),
+      content: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: maxDialogHeight,
+          minWidth: 300,
+          maxWidth: 400,
+        ),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.only(bottom: isLandscape ? 8.0 : 16.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: _nombreController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nombre',
+                      prefixIcon: Icon(Icons.music_note),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'El nombre es requerido';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _autorController,
+                    decoration: const InputDecoration(
+                      labelText: 'Autor (opcional)',
+                      prefixIcon: Icon(Icons.person),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedTono,
+                    decoration: const InputDecoration(
+                      labelText: 'Tono (opcional)',
+                      hintText: 'Selecciona el tono',
+                      prefixIcon: Icon(Icons.music_note),
+                    ),
+                    items: _notasAmericanas
+                        .map((nota) => DropdownMenuItem(
+                              value: nota,
+                              child: Text(nota),
+                            ))
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() => _selectedTono = value);
+                    },
+                  ),
+                ],
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'El nombre es requerido';
-                }
-                return null;
-              },
             ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _autorController,
-              decoration: const InputDecoration(
-                labelText: 'Autor (opcional)',
-                prefixIcon: Icon(Icons.person),
-              ),
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              initialValue: _selectedTono,
-              decoration: const InputDecoration(
-                labelText: 'Tono (opcional)',
-                hintText: 'Selecciona el tono',
-                prefixIcon: Icon(Icons.music_note),
-              ),
-              items: _notasAmericanas
-                  .map((nota) => DropdownMenuItem(
-                        value: nota,
-                        child: Text(nota),
-                      ))
-                  .toList(),
-              onChanged: (value) {
-                setState(() => _selectedTono = value);
-              },
-            ),
-          ],
+          ),
         ),
       ),
       actions: [

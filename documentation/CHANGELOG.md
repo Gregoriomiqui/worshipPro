@@ -2,6 +2,8 @@
 
 Todos los cambios notables en este proyecto serán documentados en este archivo.
 
+---
+
 ## [1.2.0] - 2025-12-21
 
 ### 🎯 Agregado
@@ -20,9 +22,58 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 
 ---
 
-## [1.1.0] - 2024
+## [1.1.0] - 2025
 
-### 🌍 Agregado
+### 🔐 Agregado — Autenticación
+- **Firebase Auth con múltiples proveedores**
+  - Login con email/contraseña
+  - Login con Google Sign-In
+  - Registro de nuevos usuarios con nombre, email y contraseña
+  - Recuperación de contraseña por email
+  - `AuthService` (405 líneas) para toda la lógica de autenticación
+  - `AuthProvider` para gestión de estado de sesión
+  - `AuthGuard` en `main.dart` que redirige según estado de autenticación
+  - 3 pantallas de auth: `LoginScreen`, `RegisterScreen`, `PasswordRecoveryScreen`
+
+### 🏢 Agregado — Sistema Multi-tenant
+- **Organizaciones e invitaciones**
+  - Modelo `Organization` con nombre, descripción, createdBy
+  - Modelo `Member` con roles: `admin` | `member`
+  - Modelo `Invitation` con estados: `pending` | `accepted` | `rejected`
+  - Modelo `User` con `organizationIds` y `activeOrganizationId`
+  - `OrganizationService` (435 líneas) para CRUD de organizaciones, miembros e invitaciones
+  - `OrganizationProvider` para gestión de estado de organizaciones
+  - 4 pantallas: `OrganizationSelectorScreen`, `CreateOrganizationScreen`, `OrganizationSettingsScreen`, `InvitationsScreen`
+  - Creador de organización es Admin automáticamente
+  - Admins pueden invitar/eliminar miembros y gestionar configuración
+
+### 🔥 Agregado — Firestore Multi-tenant
+- **Estructura de datos reorganizada**
+  - Liturgias ahora son subcollection de `organizations/{orgId}/liturgias/`
+  - Nueva colección `users/` para datos de usuario autenticado
+  - Nueva colección `organizations/` con subcollection `members/`
+  - Nueva colección `invitations/` para sistema de invitaciones
+  - `LiturgyService` actualizado (402 líneas) con rutas multi-tenant
+  - `LiturgyProvider.setContext()` para cambiar organización activa
+  - `BlockProvider.setOrganizationId()` para rutas multi-tenant
+
+### 🔒 Agregado — Reglas de Seguridad
+- **Firestore Security Rules completas**
+  - Autenticación obligatoria para todas las operaciones
+  - Aislamiento por organización: usuario solo accede a sus organizaciones
+  - Helpers `isMemberOf()` y `isAdminOf()` para validación de roles
+  - Solo admins pueden gestionar miembros
+  - Usuarios solo pueden leer/escribir sus propios datos
+  - Archivo `firestore.rules` desplegable con `firebase deploy --only firestore:rules`
+
+### 📄 Agregado — Exportación a PDF
+- **PdfService** (391 líneas) para generación de documentos PDF
+  - Generar PDF formateado con toda la información de la liturgia
+  - Compartir PDF directamente desde la app (`share_plus`)
+  - Guardar PDF en almacenamiento local (`flutter_file_dialog`)
+  - Gestión de permisos de almacenamiento (`permission_handler`)
+
+### 🌍 Agregado — Internacionalización
 - **Sistema de multi-idioma (ES/EN)**
   - Implementación completa de localización con 70+ traducciones
   - `AppLocalizations` personalizado con soporte para español e inglés
@@ -31,45 +82,45 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
   - Persistencia de preferencia de idioma con SharedPreferences
   - Todas las pantallas y diálogos traducidos
 
-- **Notificaciones de guardado**
-  - SnackBars de éxito (verde) al guardar liturgias
-  - SnackBars de error (rojo) cuando falla el guardado
-  - Mensajes traducidos en ambos idiomas
-  - Feedback visual inmediato para el usuario
-
-- **Documentación completa**
-  - `ARCHITECTURE.md` - Arquitectura técnica detallada
-  - `API_REFERENCE.md` - Referencia completa de APIs y componentes
-  - `TROUBLESHOOTING.md` - Guía de solución de problemas
-  - `CHANGELOG.md` - Este archivo
-  - Reorganización de documentación en carpeta `/documentation`
-
 ### 🔧 Modificado
+- **Campo `hora` en liturgias**
+  - Nuevo campo `hora` (TimeOfDay) en modelo `Liturgy`
+  - Selector de hora en el editor de liturgias
+
+- **10 tipos de bloques** (antes 9)
+  - Agregado `lecturaBiblica` como tipo de bloque independiente
+
+- **Campo `autor` en canciones**
+  - Modelo `Song` ahora incluye campo `autor` (opcional)
+
 - **Descripción opcional en bloques**
   - Campo `descripcion` en `LiturgyBlock` ahora es `String?` (nullable)
-  - Validación removida: descripción no es obligatoria
-  - UI actualizada para manejar valores nulos correctamente
-  - Muestra tipo de bloque cuando no hay descripción
 
 - **Actualización inmediata de listas**
-  - Fix: Bloques ahora aparecen inmediatamente después de agregar
-  - Cambio de `refreshCurrentLiturgy()` a `loadLiturgy(liturgyId)` directo
+  - Fix: Bloques aparecen inmediatamente después de agregar
   - Refrescado después de agregar, editar o eliminar bloques
-  - Experiencia de usuario mejorada sin necesidad de salir de la pantalla
 
 - **Mejoras en manejo de errores**
   - Try-catch en todas las operaciones de Firebase
   - Mensajes de error descriptivos para el usuario
-  - Logging mejorado para debugging
 
-### 📦 Dependencias
-- Agregado: `shared_preferences: ^2.3.3` para persistencia de preferencias
+### 📦 Dependencias agregadas
+- `firebase_auth: ^5.3.3` — Autenticación
+- `google_sign_in: ^6.2.2` — Google Sign-In
+- `pdf: ^3.11.2` — Generación de PDF
+- `flutter_file_dialog: ^3.0.2` — Guardar archivos
+- `share_plus: ^10.1.4` — Compartir archivos
+- `path_provider: ^2.1.5` — Rutas de almacenamiento
+- `permission_handler: ^11.3.1` — Permisos
+- `shared_preferences: ^2.3.3` — Persistencia local
 
-### 🏗️ Arquitectura
-- Implementación de patrón Repository completo
-- Separación clara de responsabilidades en capas MVVM
-- Mejoras en gestión de estado con Provider
-- Sistema responsive robusto para móvil/tablet/desktop
+### 📝 Documentación
+- `ARCHITECTURE.md` — Arquitectura técnica detallada
+- `API_REFERENCE.md` — Referencia completa de modelos, providers y servicios
+- `TROUBLESHOOTING.md` — Guía de solución de problemas
+- `FIRESTORE_STRUCTURE_V1.1.md` — Estructura multi-tenant de Firestore
+- `CHANGELOG.md` — Este archivo
+- Reorganización de documentación en carpeta `/documentation`
 
 ---
 
@@ -87,7 +138,7 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 
 - **Bloques Litúrgicos**
   - Sistema de bloques para estructurar cultos
-  - 9 tipos de bloques: adoración, oración, reflexión, acción de gracias, ofrendas, anuncios, saludos, despedida, otros
+  - 9 tipos de bloques iniciales
   - Campos configurables: descripción, responsables, comentarios, duración
   - Reordenamiento de bloques
   - Eliminación con confirmación
@@ -109,39 +160,20 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
   - Breakpoints: <600px (móvil), 600-1200px (tablet), >1200px (desktop)
   - Layouts adaptables según tamaño de pantalla
   - Dual-panel en tablet/desktop, tabs en móvil
-  - Padding, spacing y fuentes escalables
-  - Soporte para orientación portrait/landscape
 
 - **Integración Firebase**
   - Cloud Firestore como base de datos
   - Estructura con subcollections (liturgias > bloques > canciones)
   - Sincronización en tiempo real
-  - Listeners automáticos para cambios
-
-#### 🎨 UI/UX
-- Material Design 3
-- Tema personalizado con colores de marca
-- Iconografía clara e intuitiva
-- Estados vacíos informativos
-- Loading states durante operaciones
-- Diálogos de confirmación para acciones destructivas
-- AppBar con título y acciones contextuales
 
 #### 🏗️ Arquitectura
 - Patrón MVVM (Model-View-ViewModel)
 - State Management con Provider
 - Servicios separados para lógica de negocio
 - Modelos de datos inmutables con copyWith
-- Widgets reutilizables y componibles
-- Navegación con Named Routes
 
 #### 📱 Plataformas Soportadas
-- Android
-- iOS
-- Web
-- macOS
-- Windows
-- Linux
+- Android, iOS, Web, macOS, Windows, Linux
 
 #### 🔧 Tecnologías
 - Flutter SDK >=3.10.4
@@ -156,15 +188,14 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 ## Convenciones del Formato
 
 ### Tipos de Cambios
-- **🎉 Agregado** - Nuevas características
-- **🔧 Modificado** - Cambios en funcionalidad existente
-- **🐛 Corregido** - Corrección de bugs
-- **🗑️ Eliminado** - Características removidas
-- **🔒 Seguridad** - Actualizaciones de seguridad
-- **📦 Dependencias** - Cambios en paquetes
-- **🏗️ Arquitectura** - Cambios estructurales
-- **📝 Documentación** - Solo cambios en docs
-- **⚡ Performance** - Mejoras de rendimiento
+- **🎉 Agregado** — Nuevas características
+- **🔧 Modificado** — Cambios en funcionalidad existente
+- **🐛 Corregido** — Corrección de bugs
+- **🗑️ Eliminado** — Características removidas
+- **🔒 Seguridad** — Actualizaciones de seguridad
+- **📦 Dependencias** — Cambios en paquetes
+- **🏗️ Arquitectura** — Cambios estructurales
+- **📝 Documentación** — Solo cambios en docs
 
 ### Formato de Versiones
 Este proyecto sigue [Semantic Versioning](https://semver.org/):
@@ -176,26 +207,18 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/):
 
 ## Planeado para Próximas Versiones
 
-### [1.2.0] - Próximo
-- [ ] Sistema de autenticación con Firebase Auth
-- [ ] Compartir liturgias entre usuarios
-- [ ] Exportar liturgias a PDF
+### [1.3.0] — Próximo
+- [ ] Modo offline con sincronización
+- [ ] Búsqueda y filtros avanzados
 - [ ] Temas claro/oscuro
 - [ ] Más idiomas (PT, FR, etc.)
 
-### [1.3.0] - Futuro
-- [ ] Biblioteca de canciones
-- [ ] Templates de liturgias
-- [ ] Recordatorios y notificaciones
+### [2.0.0] — Futuro
+- [ ] Biblioteca de canciones compartida
+- [ ] Plantillas de liturgias predefinidas
+- [ ] Calendario de liturgias
 - [ ] Estadísticas y reportes
-- [ ] Sincronización offline mejorada
-
-### [2.0.0] - Largo plazo
 - [ ] Modo colaborativo en tiempo real
-- [ ] Versión web progressive (PWA)
-- [ ] Integración con servicios de streaming
-- [ ] App móvil nativa optimizada
-- [ ] API pública para integraciones
 
 ---
 
@@ -204,32 +227,22 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/):
 ### De 1.0.0 a 1.1.0
 
 #### Base de Datos
-No se requieren migraciones. Los cambios son compatibles:
-- Bloques con descripción no nula siguen funcionando
-- Nuevos bloques pueden tener descripción nula
-
-#### Código
-Si has extendido la app:
-```dart
-// Antes (1.0.0)
-final block = LiturgyBlock(
-  descripcion: 'Mi descripción', // Obligatorio
-  // ... otros campos
-);
-
-// Ahora (1.1.0)
-final block = LiturgyBlock(
-  descripcion: 'Mi descripción', // Opcional
-  // o
-  descripcion: null,
-  // ... otros campos
-);
-```
+Cambios significativos en la estructura de Firestore:
+- Liturgias migradas de `liturgias/` (root) a `organizations/{orgId}/liturgias/`
+- Nuevas colecciones: `users/`, `organizations/`, `invitations/`
+- Ver `FIRESTORE_STRUCTURE_V1.1.md` para estructura completa
 
 #### Dependencias
 Agregar a `pubspec.yaml`:
 ```yaml
 dependencies:
+  firebase_auth: ^5.3.3
+  google_sign_in: ^6.2.2
+  pdf: ^3.11.2
+  flutter_file_dialog: ^3.0.2
+  share_plus: ^10.1.4
+  path_provider: ^2.1.5
+  permission_handler: ^11.3.1
   shared_preferences: ^2.3.3
 ```
 
@@ -239,44 +252,12 @@ flutter pub get
 ```
 
 #### Configuración
-No se requiere configuración adicional. El idioma por defecto es español.
-
-Para cambiar idioma programáticamente:
-```dart
-final languageProvider = context.read<LanguageProvider>();
-await languageProvider.setLanguage('en'); // o 'es'
-```
+1. Habilitar Firebase Auth en Firebase Console
+2. Configurar proveedores Email/Password y Google
+3. Registrar SHA-1 para Google Sign-In en Android
+4. Desplegar nuevas reglas de Firestore: `firebase deploy --only firestore:rules`
 
 ---
 
-## Mantenimiento y Soporte
-
-### Ciclo de Versiones
-- Versiones MAJOR: Anualmente
-- Versiones MINOR: Trimestralmente
-- Versiones PATCH: Según necesidad
-
-### Soporte de Versiones
-- Versión actual: Soporte completo
-- Versión anterior: Soporte de seguridad (6 meses)
-- Versiones más antiguas: Sin soporte
-
-### Reportar Problemas
-Para reportar bugs o sugerir características:
-1. Verificar problemas existentes en GitHub Issues
-2. Consultar `TROUBLESHOOTING.md`
-3. Crear issue con template correspondiente
-
----
-
-## Agradecimientos
-
-Gracias a todos los que han contribuido al desarrollo de WorshipPro:
-- Comunidad Flutter
-- Firebase Team
-- Todos los testers y usuarios
-
----
-
-**Última actualización:** 2024
-**Versión actual:** 1.1.0
+**Última actualización:** 2025
+**Versión actual:** 1.2.0

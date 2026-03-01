@@ -2,7 +2,7 @@
 
 ## Visión General
 
-WorshipPro es una aplicación Flutter que sigue el patrón **MVVM (Model-View-ViewModel)** con **Provider** para gestión de estado. La aplicación está diseñada para ser **responsive** y soporta **múltiples idiomas** (ES/EN).
+WorshipPro es una aplicación Flutter que sigue el patrón **MVVM (Model-View-ViewModel)** con **Provider** para gestión de estado. La aplicación es **multi-tenant**, soporta **autenticación** con Firebase Auth, y es **responsive** con soporte **multiidioma** (ES/EN).
 
 ## Estructura del Proyecto
 
@@ -10,29 +10,47 @@ WorshipPro es una aplicación Flutter que sigue el patrón **MVVM (Model-View-Vi
 lib/
 ├── l10n/                    # Localización e internacionalización
 │   └── app_localizations.dart
-├── models/                  # Modelos de datos
-│   ├── block_type.dart
-│   ├── liturgy.dart
-│   ├── liturgy_block.dart
-│   └── song.dart
-├── providers/              # Gestión de estado (Provider)
+├── models/                  # Modelos de datos (8 modelos)
+│   ├── user.dart            # Usuario autenticado
+│   ├── organization.dart    # Organización (iglesia)
+│   ├── member.dart          # Miembro con roles
+│   ├── invitation.dart      # Invitación con estados
+│   ├── block_type.dart      # 10 tipos de bloques
+│   ├── liturgy.dart         # Liturgia con hora
+│   ├── liturgy_block.dart   # Bloque de liturgia
+│   └── song.dart            # Canción (nombre, autor, tono)
+├── providers/               # Gestión de estado (5 providers)
+│   ├── auth_provider.dart
+│   ├── organization_provider.dart
+│   ├── liturgy_provider.dart
 │   ├── block_provider.dart
-│   ├── language_provider.dart
-│   └── liturgy_provider.dart
-├── screens/                # Pantallas de la aplicación
+│   └── language_provider.dart
+├── screens/                 # Pantallas de la aplicación (10 pantallas)
+│   ├── auth/
+│   │   ├── login_screen.dart
+│   │   ├── register_screen.dart
+│   │   └── password_recovery_screen.dart
+│   ├── organization/
+│   │   ├── organization_selector_screen.dart
+│   │   ├── create_organization_screen.dart
+│   │   ├── organization_settings_screen.dart
+│   │   └── invitations_screen.dart
 │   ├── liturgy_list_screen.dart
 │   ├── liturgy_editor_screen.dart
 │   └── presentation_mode_screen.dart
-├── services/               # Servicios (Firebase, etc.)
-│   └── liturgy_service.dart
-├── theme/                  # Tema y estilos
+├── services/                # Servicios (4 servicios)
+│   ├── auth_service.dart
+│   ├── organization_service.dart
+│   ├── liturgy_service.dart
+│   └── pdf_service.dart
+├── theme/                   # Tema y estilos
 │   └── app_theme.dart
-├── utils/                  # Utilidades
+├── utils/                   # Utilidades
 │   └── responsive_utils.dart
-├── widgets/                # Widgets reutilizables
+├── widgets/                 # Widgets reutilizables
 │   ├── common_widgets.dart
 │   └── language_selector.dart
-└── main.dart              # Punto de entrada
+└── main.dart                # Punto de entrada
 ```
 
 ## Capas de la Arquitectura
@@ -40,8 +58,19 @@ lib/
 ### 1. Capa de Presentación (View)
 **Ubicación:** `lib/screens/` y `lib/widgets/`
 
+- **Pantallas de autenticación:**
+  - `LoginScreen`: Login con Email/Password y Google Sign-In
+  - `RegisterScreen`: Registro con validaciones completas
+  - `PasswordRecoveryScreen`: Recuperación de contraseña con confirmación
+
+- **Pantallas de organización:**
+  - `OrganizationSelectorScreen`: Selector de iglesia, crear nueva, ver invitaciones
+  - `CreateOrganizationScreen`: Formulario de nueva organización
+  - `OrganizationSettingsScreen`: Gestión de miembros, roles e invitaciones
+  - `InvitationsScreen`: Lista de invitaciones pendientes
+
 - **Pantallas principales:**
-  - `LiturgyListScreen`: Lista de liturgias con grid/list adaptativo
+  - `LiturgyListScreen`: Lista de liturgias con grid/list adaptativo y nombre de org activa
   - `LiturgyEditorScreen`: Editor con tabs (móvil) o dual-panel (tablet/desktop)
   - `PresentationModeScreen`: Modo presentación fullscreen
 
@@ -55,16 +84,48 @@ lib/
 ### 2. Capa de Lógica de Negocio (ViewModel)
 **Ubicación:** `lib/providers/`
 
+#### AuthProvider
+```dart
+class AuthProvider extends ChangeNotifier {
+  AuthStatus _status; // initial, authenticated, unauthenticated, loading
+  User? _currentUser;
+  String? _error;
+
+  Future<void> registerWithEmail(String email, String password, String displayName);
+  Future<void> loginWithEmail(String email, String password);
+  Future<void> loginWithGoogle();
+  Future<void> logout();
+  Future<void> resetPassword(String email);
+}
+```
+
+#### OrganizationProvider
+```dart
+class OrganizationProvider extends ChangeNotifier {
+  List<Organization> _organizations;
+  Organization? _activeOrganization;
+  List<Member> _members;
+  List<Invitation> _invitations;
+
+  Future<void> loadUserOrganizations(String userId);
+  Future<void> setActiveOrganization(String orgId);
+  Future<String?> createOrganization(String nombre, String? descripcion);
+  Future<void> inviteMember(String email, MemberRole role);
+  Future<void> acceptInvitation(Invitation invitation);
+  Future<void> rejectInvitation(String invitationId);
+}
+```
+
 #### LiturgyProvider
 ```dart
 class LiturgyProvider extends ChangeNotifier {
-  // Estado
-  List<Liturgy> _liturgies = [];
+  void setContext(String organizationId, String userId);
+
+  List<Liturgy> _liturgies;
   Liturgy? _currentLiturgy;
-  bool _isLoading = false;
+  bool _isLoading;
   String? _error;
-  
-  // Métodos CRUD
+
   Future<void> initLiturgiesListener();
   Future<void> loadLiturgy(String liturgyId);
   Future<String?> createLiturgy(Liturgy liturgy);
@@ -76,10 +137,13 @@ class LiturgyProvider extends ChangeNotifier {
 #### BlockProvider
 ```dart
 class BlockProvider extends ChangeNotifier {
-  // Operaciones CRUD para bloques
+  void setOrganizationId(String organizationId);
+
   Future<String?> createBlock(String liturgyId, LiturgyBlock block);
   Future<bool> updateBlock(String liturgyId, LiturgyBlock block);
   Future<bool> deleteBlock(String liturgyId, String blockId);
+  Future<String?> createSong(String liturgyId, String blockId, Song song);
+  Future<bool> deleteSong(String liturgyId, String blockId, String songId);
 }
 ```
 
@@ -87,7 +151,6 @@ class BlockProvider extends ChangeNotifier {
 ```dart
 class LanguageProvider extends ChangeNotifier {
   Locale _locale;
-  
   Future<void> setLocale(Locale locale);
   Future<void> toggleLanguage();
 }
@@ -96,115 +159,62 @@ class LanguageProvider extends ChangeNotifier {
 ### 3. Capa de Datos (Model)
 **Ubicación:** `lib/models/`
 
-#### Liturgy
-```dart
-class Liturgy {
-  final String id;
-  final String titulo;
-  final DateTime fecha;
-  final String? descripcion;
-  final List<LiturgyBlock> bloques;
-  final DateTime createdAt;
-  final DateTime updatedAt;
-  
-  // Computed properties
-  int get duracionTotalMinutos;
-  String get duracionTotalFormateada;
-}
-```
+#### Modelos principales
 
-#### LiturgyBlock
-```dart
-class LiturgyBlock {
-  final String id;
-  final BlockType tipo;
-  final String? descripcion;  // OPCIONAL
-  final List<String> responsables;
-  final String? comentarios;
-  final int duracionMinutos;
-  final int orden;
-  final List<Song> canciones;
-  
-  bool get isAdoracion;
-}
-```
-
-#### BlockType (Enum)
-```dart
-enum BlockType {
-  adoracionAlabanza,
-  oracion,
-  reflexion,
-  accionGracias,
-  ofrendas,
-  anuncios,
-  saludos,
-  despedida,
-  otros
-}
-```
+| Modelo | Campos clave |
+|--------|-------------|
+| `User` | id, email, displayName, organizationIds, activeOrganizationId, authProviders |
+| `Organization` | id, nombre, descripcion, createdBy |
+| `Member` | id, email, displayName, role (admin/member), joinedAt |
+| `Invitation` | id, organizationId, email, role, status (pending/accepted/rejected), expiresAt |
+| `Liturgy` | id, titulo, fecha, hora, descripcion, bloques |
+| `LiturgyBlock` | id, tipo, descripcion?, responsables, duracionMinutos, orden, canciones |
+| `BlockType` | 10 valores: adoracionAlabanza, oracion, lecturaBiblica, reflexion, accionGracias, ofrendas, anuncios, saludos, despedida, otros |
+| `Song` | id, nombre, autor, tono |
 
 ### 4. Capa de Servicios
 **Ubicación:** `lib/services/`
 
-#### LiturgyService
-Maneja todas las operaciones con Firebase Firestore:
-
-```dart
-class LiturgyService {
-  // Liturgias
-  Stream<List<Liturgy>> streamLiturgies();
-  Future<Liturgy?> getLiturgyById(String liturgyId);
-  Future<String> createLiturgy(Liturgy liturgy);
-  Future<void> updateLiturgy(Liturgy liturgy);
-  Future<void> deleteLiturgy(String liturgyId);
-  
-  // Bloques
-  Future<List<LiturgyBlock>> getBlocks(String liturgyId);
-  Future<String> createBlock(String liturgyId, LiturgyBlock block);
-  Future<void> updateBlock(String liturgyId, LiturgyBlock block);
-  Future<void> deleteBlock(String liturgyId, String blockId);
-  
-  // Canciones
-  Future<List<Song>> getSongs(String liturgyId, String blockId);
-  Future<String> createSong(String liturgyId, String blockId, Song song);
-  Future<void> deleteSong(String liturgyId, String blockId, String songId);
-}
-```
+| Servicio | Responsabilidad |
+|----------|----------------|
+| `AuthService` | Firebase Auth: email/password, Google Sign-In, account linking, password reset, gestión de docs de usuario |
+| `OrganizationService` | CRUD de organizaciones, miembros, invitaciones. Verificación de permisos |
+| `LiturgyService` | CRUD multi-tenant: `organizations/{orgId}/liturgias/...`. Streams en tiempo real |
+| `PdfService` | Generación de PDF A4, compartir y guardar archivos |
 
 ## Flujo de Datos
 
-### 1. Lectura de Datos (Read)
+### 1. Flujo de Autenticación
 ```
-Firebase → LiturgyService → LiturgyProvider → Screen → UI
-```
-
-### 2. Escritura de Datos (Write)
-```
-UI → Screen → Provider → Service → Firebase → Provider.notifyListeners() → UI
+App Start → AuthGuard → AuthProvider.authStateChanges
+  → Unauthenticated → LoginScreen
+  → Authenticated (sin org) → OrganizationSelectorScreen
+  → Authenticated (con org) → _InitialDataLoader → LiturgyListScreen
 ```
 
-### 3. Actualización en Tiempo Real
+### 2. Lectura de Datos
+```
+Firebase → Service(orgId) → Provider → Consumer → UI
+```
+
+### 3. Escritura de Datos
+```
+UI → Screen → Provider → Service(orgId) → Firebase → Provider.notifyListeners() → UI
+```
+
+### 4. Actualización en Tiempo Real
 ```
 Firebase Stream → Service → Provider.initLiturgiesListener() → notifyListeners() → Consumer → UI
 ```
 
 ## Patrones de Diseño
 
-### 1. **Repository Pattern**
-`LiturgyService` actúa como repositorio que abstrae la lógica de acceso a datos.
-
-### 2. **Observer Pattern**
-`Provider` + `ChangeNotifier` + `Consumer` para reactividad.
-
-### 3. **Factory Pattern**
-Métodos `.fromMap()` en modelos para construir objetos desde Firebase.
-
-### 4. **Builder Pattern**
-`ResponsiveBuilder` para construir UIs adaptativas.
-
-### 5. **Dependency Injection**
-`MultiProvider` en `main.dart` para inyectar dependencias.
+1. **Repository Pattern** — Servicios abstraen acceso a datos
+2. **Observer Pattern** — Provider + ChangeNotifier + Consumer
+3. **Factory Pattern** — `.fromMap()` en modelos
+4. **Builder Pattern** — `ResponsiveBuilder` para UIs adaptativas
+5. **Dependency Injection** — `MultiProvider` en `main.dart`
+6. **Guard Pattern** — `AuthGuard` para navegación condicional
 
 ## Sistema Responsive
 
@@ -212,221 +222,62 @@ Métodos `.fromMap()` en modelos para construir objetos desde Firebase.
 ```dart
 class Breakpoints {
   static const double mobile = 600;   // < 600px
-  static const double tablet = 1200;  // 600-1200px
+  static const double tablet = 900;   // 600-1200px
   static const double desktop = 1200; // > 1200px
 }
 ```
 
-### ResponsiveInfo
-Proporciona información del dispositivo y valores adaptativos:
-- `deviceType`: mobile, tablet, desktop
-- `isLandscape` / `isPortrait`
-- `fontSizeFor(double baseSize)`: Escala fuentes
-- `iconSizeFor(double baseSize)`: Escala íconos
-- `paddingValue`: Padding adaptativo
-- `adaptiveSpacing`: Espaciado adaptativo
-
 ### Layouts Adaptativos
+- **Lista de Liturgias**: ListView (móvil) → GridView 2-3 columnas (tablet/desktop)
+- **Editor**: Tabs (móvil) → Dual-panel (tablet/desktop)
+- **Presentación**: Compacto (móvil portrait) → Completo (landscape/desktop)
 
-#### Lista de Liturgias
-- **Móvil/Portrait**: ListView vertical
-- **Tablet Landscape/Desktop**: GridView (2-3 columnas)
+## Gestión de Estado (Provider Setup)
 
-#### Editor de Liturgia
-- **Móvil**: Tabs (Información / Bloques)
-- **Tablet/Desktop**: Dual-panel (Información | Bloques)
-
-#### Modo Presentación
-- **Móvil Portrait**: Oculta "Bloque Siguiente"
-- **Landscape/Desktop**: Muestra todo
-
-## Sistema de Localización
-
-### Idiomas Soportados
-- Español (es)
-- Inglés (en)
-
-### Estructura
-```dart
-class AppLocalizations {
-  final Locale locale;
-  
-  String translate(String key);
-  
-  // Getters convenientes
-  String get appTitle;
-  String get loading;
-  // ... más de 70 traducciones
-}
-```
-
-### Uso
-```dart
-final l10n = AppLocalizations.of(context);
-Text(l10n.appTitle);
-```
-
-### Persistencia
-El idioma se guarda en `SharedPreferences` y se carga al iniciar.
-
-## Gestión de Estado
-
-### Provider Setup
 ```dart
 MultiProvider(
   providers: [
+    ChangeNotifierProvider(create: (_) => AuthProvider()),
+    ChangeNotifierProvider(create: (_) => OrganizationProvider()),
     ChangeNotifierProvider(create: (_) => LanguageProvider()),
     ChangeNotifierProvider(create: (_) => LiturgyProvider()),
     ChangeNotifierProvider(create: (_) => BlockProvider()),
   ],
-  child: MaterialApp(...)
+  child: MaterialApp(home: AuthGuard()),
 )
 ```
 
-### Consumir Estado
-```dart
-// Leer
-final liturgy = context.read<LiturgyProvider>().currentLiturgy;
-
-// Escuchar cambios
-Consumer<LiturgyProvider>(
-  builder: (context, provider, child) {
-    return Text(provider.currentLiturgy?.titulo ?? '');
-  },
-)
-```
-
-## Firebase Structure
+## Firebase Structure (v1.1 Multi-tenant)
 
 ```
-liturgies/
-├── {liturgyId}/
-│   ├── titulo: string
-│   ├── fecha: timestamp
-│   ├── descripcion: string?
-│   ├── createdAt: timestamp
-│   ├── updatedAt: timestamp
-│   └── bloques/ (subcollection)
-│       ├── {blockId}/
-│       │   ├── tipo: string
-│       │   ├── descripcion: string?
-│       │   ├── responsables: array<string>
-│       │   ├── comentarios: string?
-│       │   ├── duracionMinutos: number
-│       │   ├── orden: number
-│       │   └── canciones/ (subcollection)
-│       │       └── {songId}/
-│       │           ├── nombre: string
-│       │           └── tono: string?
+firestore (root)
+├── users/{userId}
+│   └── email, displayName, organizationIds, activeOrganizationId, authProviders
+├── organizations/{organizationId}
+│   ├── nombre, descripcion, createdBy
+│   ├── members/{userId} → email, displayName, role
+│   └── liturgias/{liturgyId}
+│       ├── titulo, fecha, hora, descripcion, createdBy
+│       └── bloques/{blockId}
+│           ├── tipo, descripcion, responsables, duracionMinutos, orden
+│           └── canciones/{songId} → nombre, autor, tono, orden
+└── invitations/{invitationId}
+    └── organizationId, email, role, status, invitedBy
 ```
+
+## Seguridad (Firestore Rules)
+
+Las reglas de seguridad implementan:
+- **Autenticación obligatoria** para todas las operaciones
+- **Aislamiento de organizaciones** con `isMemberOf(orgId)`
+- **Control de roles** con `isAdminOf(orgId)` para operaciones admin
+- **Acceso a invitaciones** filtrado por email del usuario
+
+Ver `firestore.rules` en la raíz del proyecto para la implementación completa.
 
 ## Convenciones de Código
 
-### Nombrado
-- **Clases**: PascalCase (ej: `LiturgyProvider`)
-- **Archivos**: snake_case (ej: `liturgy_provider.dart`)
-- **Variables**: camelCase (ej: `currentLiturgy`)
-- **Constantes**: camelCase con const (ej: `const double mobile = 600`)
-
-### Organización de Imports
-```dart
-// Flutter SDK
-import 'package:flutter/material.dart';
-
-// Packages externos
-import 'package:provider/provider.dart';
-
-// Imports locales
-import 'package:worshippro/models/liturgy.dart';
-```
-
-### Widgets Privados
-Usar `_` para widgets internos de archivo:
-```dart
-class _BlockCard extends StatelessWidget { ... }
-```
-
-## Manejo de Errores
-
-### En Providers
-```dart
-try {
-  // Operación
-  _error = null;
-} catch (e) {
-  _error = 'Mensaje de error: $e';
-} finally {
-  notifyListeners();
-}
-```
-
-### En UI
-```dart
-if (provider.error != null) {
-  return ErrorStateWidget(
-    message: provider.error!,
-    onRetry: () => provider.retry(),
-  );
-}
-```
-
-## Performance
-
-### Optimizaciones Implementadas
-1. **Lazy Loading**: Los bloques se cargan solo cuando se necesitan
-2. **Stream Listeners**: Solo para la lista principal, no para edición
-3. **Consumer Específicos**: Solo rebuild de widgets necesarios
-4. **Const Widgets**: Uso extensivo de `const` para widgets estáticos
-5. **Keys**: ListView/GridView con keys para optimizar renders
-
-## Testing Strategy
-
-### Niveles de Testing
-1. **Unit Tests**: Modelos y utilidades
-2. **Widget Tests**: Widgets individuales
-3. **Integration Tests**: Flujos completos
-
-### Ejemplo
-```dart
-testWidgets('should display liturgy title', (tester) async {
-  await tester.pumpWidget(MyApp());
-  expect(find.text('WorshipPro'), findsOneWidget);
-});
-```
-
-## Seguridad
-
-### Firebase Rules Recomendadas
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /liturgies/{liturgyId} {
-      allow read, write: if request.auth != null;
-      
-      match /bloques/{blockId} {
-        allow read, write: if request.auth != null;
-        
-        match /canciones/{songId} {
-          allow read, write: if request.auth != null;
-        }
-      }
-    }
-  }
-}
-```
-
-## Deployment
-
-### Build para Producción
-```bash
-flutter build apk --release      # Android
-flutter build ios --release      # iOS
-flutter build web --release      # Web
-```
-
-### Configuración Pre-Deploy
-1. Configurar Firebase (`firebase_options.dart`)
-2. Actualizar versión en `pubspec.yaml`
-3. Revisar permisos en manifests
-4. Probar en dispositivos físicos
+- **Clases**: PascalCase (`LiturgyProvider`)
+- **Archivos**: snake_case (`liturgy_provider.dart`)
+- **Variables**: camelCase (`currentLiturgy`)
+- **Imports**: Flutter SDK → Packages externos → Imports locales

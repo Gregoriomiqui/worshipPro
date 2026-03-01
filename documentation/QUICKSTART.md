@@ -29,27 +29,29 @@ flutterfire configure
 # - Se generará automáticamente firebase_options.dart
 ```
 
-### Opción manual
+### Configuración adicional requerida
 
-Si prefieres configurar manualmente:
+1. **Habilitar Authentication** en Firebase Console:
+   - Ve a Authentication → Sign-in method
+   - Activa **Email/Password**
+   - Activa **Google** (con tu email de soporte)
 
-1. Ve a https://console.firebase.google.com/
-2. Crea un nuevo proyecto llamado "WorshipPro" (o el nombre que prefieras)
-3. En el proyecto, ve a **Firestore Database** y haz clic en **Crear base de datos**
-4. Selecciona **Modo de prueba** (para desarrollo)
-5. Elige una ubicación cercana
+2. **Habilitar Firestore** en Firebase Console:
+   - Ve a Firestore Database → Crear base de datos
+   - Selecciona Modo de producción
+   - Elige ubicación cercana
 
-#### Para Android:
-```bash
-# Descarga google-services.json
-# Colócalo en: android/app/google-services.json
-```
+3. **Desplegar reglas de seguridad**:
+   ```bash
+   firebase deploy --only firestore:rules
+   ```
 
-#### Para iOS:
-```bash
-# Descarga GoogleService-Info.plist
-# Colócalo en: ios/Runner/GoogleService-Info.plist
-```
+4. **Registrar SHA-1 para Google Sign-In** (Android):
+   ```bash
+   cd android && ./gradlew signingReport
+   ```
+   Copia el SHA-1 → Firebase Console → Project Settings → Android app → Add fingerprint.
+   Re-descarga `google-services.json` y reemplaza en `android/app/`.
 
 ---
 
@@ -70,14 +72,26 @@ O simplemente presiona F5 en VS Code / Android Studio.
 ## ✅ Verificar que todo funciona
 
 1. La app debería abrirse sin errores
-2. Deberías ver la pantalla de "No hay liturgias"
-3. Haz clic en "Crear liturgia"
-4. Completa el formulario y guarda
-5. ¡Tu primera liturgia está creada! 🎉
+2. Deberías ver la **pantalla de Login**
+3. **Registra un nuevo usuario** con email y contraseña (o usa Google Sign-In)
+4. **Crea tu primera organización** (iglesia)
+5. **Crea tu primera liturgia** con el botón (+)
+6. ¡Tu primera liturgia está creada! 🎉
+
+### Flujo esperado:
+```
+LoginScreen → RegisterScreen → OrganizationSelectorScreen
+→ CreateOrganizationScreen → LiturgyListScreen → LiturgyEditorScreen
+```
 
 ---
 
 ## 🐛 Solución de problemas comunes
+
+### Error: "DEVELOPER_ERROR" al usar Google Sign-In
+
+**Causa**: No se ha registrado el SHA-1 del certificado en Firebase Console.
+**Solución**: Ver Paso 2, punto 4.
 
 ### Error: "No se puede conectar a Firebase"
 
@@ -88,45 +102,36 @@ O simplemente presiona F5 en VS Code / Android Studio.
 flutterfire configure
 ```
 
+### Error: "Unable to resolve host firestore.googleapis.com"
+
+**Causa**: El dispositivo no tiene conexión a internet.
+**Solución**: Verificar conexión WiFi/datos móviles.
+
 ### Error: "MissingPluginException"
 
 **Solución**: Reinicia la app completamente.
 
 ```bash
-# Detener la app (Ctrl+C en la terminal)
-# Limpiar
-flutter clean
-
-# Reinstalar dependencias
-flutter pub get
-
-# Volver a ejecutar
-flutter run
+flutter clean && flutter pub get && flutter run
 ```
 
 ### Error de Firestore: "Permission denied"
 
-**Solución**: En Firebase Console, ve a Firestore Database → Reglas y asegúrate de tener:
+**Solución**: Despliega las reglas de seguridad:
 
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true; // Solo para desarrollo
-    }
-  }
-}
+```bash
+firebase deploy --only firestore:rules
 ```
 
 ---
 
 ## 📖 Próximos pasos
 
-1. Lee el [README.md](README.md) completo para entender la estructura del proyecto
-2. Explora los modelos de datos en `lib/models/`
-3. Personaliza los colores en `lib/theme/app_theme.dart`
-4. Agrega tus propios tipos de bloques en `lib/models/block_type.dart`
+1. Lee el [README.md](../README.md) completo para entender la estructura del proyecto
+2. Explora los modelos de datos en `lib/models/` (8 modelos)
+3. Revisa la [ARCHITECTURE.md](ARCHITECTURE.md) para entender el patrón MVVM
+4. Personaliza los colores en `lib/theme/app_theme.dart`
+5. Invita miembros a tu organización desde la app
 
 ---
 
@@ -134,18 +139,16 @@ service cloud.firestore {
 
 - **Usa un tablet o emulador de tablet** para la mejor experiencia
 - **El modo presentación funciona mejor en pantalla completa**
-- **Guarda frecuentemente** mientras editas liturgias
+- **Exporta a PDF** para compartir el programa del culto
 - **Prueba el modo presentación** antes del culto real
+- **Invita miembros** a tu organización para trabajo colaborativo
 
 ---
 
 ## 🙏 ¿Necesitas ayuda?
 
-- Revisa el [README.md](README.md) principal
-- Abre un issue en el repositorio
+- Revisa el [README.md](../README.md) principal
+- Consulta [TROUBLESHOOTING.md](TROUBLESHOOTING.md) para problemas comunes
+- Revisa [FIREBASE_SETUP.md](FIREBASE_SETUP.md) para configuración detallada de Firebase
 - Consulta la [documentación de Flutter](https://flutter.dev/docs)
 - Consulta la [documentación de Firebase](https://firebase.google.com/docs)
-
----
-
-¡Listo! Ahora estás preparado para usar WorshipPro en tu iglesia. 🎵

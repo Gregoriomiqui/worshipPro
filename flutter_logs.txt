@@ -1,0 +1,8 @@
+Launching lib/main.dart on macOS in debug mode...
+Warning: CocoaPods is installed but broken. Skipping pod install.
+  You appear to have CocoaPods installed but it is not working.
+  This can happen if the version of Ruby that CocoaPods was installed with is different from the one being used to invoke it.
+  This can usually be fixed by re-installing CocoaPods.
+For re-installation instructions, see https://guides.cocoapods.org/using/getting-started.html#installation
+
+Error: CocoaPods not installed or not in valid state.

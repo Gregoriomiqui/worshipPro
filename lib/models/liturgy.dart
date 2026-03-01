@@ -6,6 +6,7 @@ class Liturgy {
   final String id;
   final String titulo;
   final DateTime fecha;
+  final String? hora; // Formato "HH:mm", e.g. "10:30"
   final String? descripcion;
   final List<LiturgyBlock> bloques;
   final DateTime createdAt;
@@ -15,6 +16,7 @@ class Liturgy {
     required this.id,
     required this.titulo,
     required this.fecha,
+    this.hora,
     this.descripcion,
     this.bloques = const [],
     required this.createdAt,
@@ -27,6 +29,7 @@ class Liturgy {
       id: id,
       titulo: map['titulo'] as String? ?? '',
       fecha: (map['fecha'] as Timestamp).toDate(),
+      hora: map['hora'] as String?,
       descripcion: map['descripcion'] as String?,
       bloques: [], // Los bloques se cargan por separado desde la subcolección
       createdAt: (map['createdAt'] as Timestamp).toDate(),
@@ -39,6 +42,7 @@ class Liturgy {
     return {
       'titulo': titulo,
       'fecha': Timestamp.fromDate(fecha),
+      'hora': hora,
       'descripcion': descripcion,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
@@ -62,6 +66,8 @@ class Liturgy {
     String? id,
     String? titulo,
     DateTime? fecha,
+    String? hora,
+    bool clearHora = false,
     String? descripcion,
     List<LiturgyBlock>? bloques,
     DateTime? createdAt,
@@ -71,6 +77,7 @@ class Liturgy {
       id: id ?? this.id,
       titulo: titulo ?? this.titulo,
       fecha: fecha ?? this.fecha,
+      hora: clearHora ? null : (hora ?? this.hora),
       descripcion: descripcion ?? this.descripcion,
       bloques: bloques ?? this.bloques,
       createdAt: createdAt ?? this.createdAt,

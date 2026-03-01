@@ -5,18 +5,22 @@ import 'package:worshippro/models/liturgy_block.dart';
 import 'package:worshippro/models/song.dart';
 
 /// Servicio para gestionar los cultos en Firebase Firestore
+/// Versión 1.1: Multi-tenant con organizationId
 class LiturgyService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Colección principal de cultos
-  CollectionReference get _liturgiesCollection =>
-      _firestore.collection('liturgias');
+  /// Obtener colección de liturgias para una organización específica
+  CollectionReference _liturgiesCollection(String organizationId) =>
+      _firestore
+          .collection('organizations')
+          .doc(organizationId)
+          .collection('liturgias');
 
   // ==================== LITURGIAS ====================
 
-  /// Obtiene todas las liturgias ordenadas por fecha descendente
-  Stream<List<Liturgy>> getLiturgies() {
-    return _liturgiesCollection
+  /// Obtiene todas las liturgias de una organización ordenadas por fecha descendente
+  Stream<List<Liturgy>> getLiturgies(String organizationId) {
+    return _liturgiesCollection(organizationId)
         .orderBy('fecha', descending: true)
         .snapshots()
         .asyncMap((snapshot) async {
@@ -43,16 +47,16 @@ class LiturgyService {
   }
 
   /// Obtiene una liturgia específica con todos sus bloques y canciones
-  Future<Liturgy?> getLiturgyById(String liturgyId) async {
+  Future<Liturgy?> getLiturgyById(String organizationId, String liturgyId) async {
     try {
-      final liturgyDoc = await _liturgiesCollection.doc(liturgyId).get();
+      final liturgyDoc = await _liturgiesCollection(organizationId).doc(liturgyId).get();
       if (!liturgyDoc.exists) return null;
 
       final liturgy =
           Liturgy.fromMap(liturgyDoc.data() as Map<String, dynamic>, liturgyDoc.id);
 
       // Cargar bloques
-      final blocks = await getBlocks(liturgyId);
+      final blocks = await getBlocks(organizationId, liturgyId);
 
       return liturgy.copyWith(bloques: blocks);
     } catch (e) {
@@ -61,15 +65,16 @@ class LiturgyService {
     }
   }
 
-  /// Crea una nueva liturgia
-  Future<String> createLiturgy(Liturgy liturgy) async {
+  /// Crea una nueva liturgia en una organización
+  Future<String> createLiturgy(String organizationId, Liturgy liturgy, String createdBy) async {
     try {
       final now = DateTime.now();
       final liturgyData = liturgy.toMap();
+      liturgyData['createdBy'] = createdBy;
       liturgyData['createdAt'] = Timestamp.fromDate(now);
       liturgyData['updatedAt'] = Timestamp.fromDate(now);
 
-      final docRef = await _liturgiesCollection.add(liturgyData);
+      final docRef = await _liturgiesCollection(organizationId).add(liturgyData);
       return docRef.id;
     } catch (e) {
       print('Error al crear liturgia: $e');
@@ -78,12 +83,12 @@ class LiturgyService {
   }
 
   /// Actualiza una liturgia existente
-  Future<void> updateLiturgy(Liturgy liturgy) async {
+  Future<void> updateLiturgy(String organizationId, Liturgy liturgy) async {
     try {
       final liturgyData = liturgy.toMap();
       liturgyData['updatedAt'] = Timestamp.fromDate(DateTime.now());
 
-      await _liturgiesCollection.doc(liturgy.id).update(liturgyData);
+      await _liturgiesCollection(organizationId).doc(liturgy.id).update(liturgyData);
     } catch (e) {
       print('Error al actualizar liturgia: $e');
       rethrow;
@@ -91,17 +96,17 @@ class LiturgyService {
   }
 
   /// Duplica una liturgia con todos sus bloques y canciones
-  Future<String> duplicateLiturgy(String liturgyId) async {
+  Future<String> duplicateLiturgy(String organizationId, String liturgyId) async {
     try {
       // Obtener la liturgia original con todos sus bloques
-      final originalLiturgy = await getLiturgyById(liturgyId);
+      final originalLiturgy = await getLiturgyById(organizationId, liturgyId);
       
       if (originalLiturgy == null) {
         throw Exception('Liturgia no encontrada');
       }
       
       // Calcular el número de duplicado
-      final allLiturgies = await _liturgiesCollection.get();
+      final allLiturgies = await _liturgiesCollection(organizationId).get();
       int duplicateNumber = 1;
       String baseTitle = originalLiturgy.titulo;
       
@@ -132,14 +137,16 @@ class LiturgyService {
       );
       
       // Crear la liturgia
-      await _liturgiesCollection.doc(newLiturgyId).set(newLiturgy.toMap());
+      final liturgyData = newLiturgy.toMap();
+      liturgyData['createdBy'] = liturgyData['createdBy'] ?? '';
+      await _liturgiesCollection(organizationId).doc(newLiturgyId).set(liturgyData);
       
       // Duplicar todos los bloques
       for (var block in originalLiturgy.bloques) {
         final newBlockId = const Uuid().v4();
         final blockData = block.toMap();
         
-        await _liturgiesCollection
+        await _liturgiesCollection(organizationId)
             .doc(newLiturgyId)
             .collection('bloques')
             .doc(newBlockId)
@@ -148,7 +155,7 @@ class LiturgyService {
         // Duplicar canciones si el bloque es de adoración
         if (block.isAdoracion && block.canciones.isNotEmpty) {
           for (var song in block.canciones) {
-            await _liturgiesCollection
+            await _liturgiesCollection(organizationId)
                 .doc(newLiturgyId)
                 .collection('bloques')
                 .doc(newBlockId)
@@ -166,10 +173,10 @@ class LiturgyService {
   }
 
   /// Elimina una liturgia y todos sus bloques y canciones
-  Future<void> deleteLiturgy(String liturgyId) async {
+  Future<void> deleteLiturgy(String organizationId, String liturgyId) async {
     try {
       // Eliminar todos los bloques y sus canciones
-      final blocks = await _liturgiesCollection
+      final blocks = await _liturgiesCollection(organizationId)
           .doc(liturgyId)
           .collection('bloques')
           .get();
@@ -185,7 +192,7 @@ class LiturgyService {
       }
 
       // Eliminar liturgia
-      await _liturgiesCollection.doc(liturgyId).delete();
+      await _liturgiesCollection(organizationId).doc(liturgyId).delete();
     } catch (e) {
       print('Error al eliminar liturgia: $e');
       rethrow;
@@ -195,9 +202,9 @@ class LiturgyService {
   // ==================== BLOQUES ====================
 
   /// Obtiene todos los bloques de una liturgia ordenados por orden
-  Future<List<LiturgyBlock>> getBlocks(String liturgyId) async {
+  Future<List<LiturgyBlock>> getBlocks(String organizationId, String liturgyId) async {
     try {
-      final snapshot = await _liturgiesCollection
+      final snapshot = await _liturgiesCollection(organizationId)
           .doc(liturgyId)
           .collection('bloques')
           .orderBy('orden')
@@ -211,7 +218,7 @@ class LiturgyService {
 
         // Si es adoración, cargar canciones
         if (block.isAdoracion) {
-          final songs = await getSongs(liturgyId, block.id);
+          final songs = await getSongs(organizationId, liturgyId, block.id);
           blocks.add(block.copyWith(canciones: songs));
         } else {
           blocks.add(block);
@@ -226,9 +233,9 @@ class LiturgyService {
   }
 
   /// Crea un nuevo bloque en una liturgia
-  Future<String> createBlock(String liturgyId, LiturgyBlock block) async {
+  Future<String> createBlock(String organizationId, String liturgyId, LiturgyBlock block) async {
     try {
-      final docRef = await _liturgiesCollection
+      final docRef = await _liturgiesCollection(organizationId)
           .doc(liturgyId)
           .collection('bloques')
           .add(block.toMap());
@@ -241,7 +248,7 @@ class LiturgyService {
       }
 
       // Actualizar timestamp de la liturgia
-      await _liturgiesCollection.doc(liturgyId).update({
+      await _liturgiesCollection(organizationId).doc(liturgyId).update({
         'updatedAt': Timestamp.fromDate(DateTime.now()),
       });
 
@@ -254,9 +261,9 @@ class LiturgyService {
 
   /// Actualiza un bloque existente
   Future<void> updateBlock(
-      String liturgyId, LiturgyBlock block) async {
+      String organizationId, String liturgyId, LiturgyBlock block) async {
     try {
-      final blockRef = _liturgiesCollection
+      final blockRef = _liturgiesCollection(organizationId)
           .doc(liturgyId)
           .collection('bloques')
           .doc(block.id);
@@ -278,7 +285,7 @@ class LiturgyService {
       }
 
       // Actualizar timestamp de la liturgia
-      await _liturgiesCollection.doc(liturgyId).update({
+      await _liturgiesCollection(organizationId).doc(liturgyId).update({
         'updatedAt': Timestamp.fromDate(DateTime.now()),
       });
     } catch (e) {
@@ -288,10 +295,10 @@ class LiturgyService {
   }
 
   /// Elimina un bloque y todas sus canciones
-  Future<void> deleteBlock(String liturgyId, String blockId) async {
+  Future<void> deleteBlock(String organizationId, String liturgyId, String blockId) async {
     try {
       // Eliminar canciones del bloque
-      final songs = await _liturgiesCollection
+      final songs = await _liturgiesCollection(organizationId)
           .doc(liturgyId)
           .collection('bloques')
           .doc(blockId)
@@ -303,14 +310,14 @@ class LiturgyService {
       }
 
       // Eliminar bloque
-      await _liturgiesCollection
+      await _liturgiesCollection(organizationId)
           .doc(liturgyId)
           .collection('bloques')
           .doc(blockId)
           .delete();
 
       // Actualizar timestamp de la liturgia
-      await _liturgiesCollection.doc(liturgyId).update({
+      await _liturgiesCollection(organizationId).doc(liturgyId).update({
         'updatedAt': Timestamp.fromDate(DateTime.now()),
       });
     } catch (e) {
@@ -322,9 +329,9 @@ class LiturgyService {
   // ==================== CANCIONES ====================
 
   /// Obtiene todas las canciones de un bloque
-  Future<List<Song>> getSongs(String liturgyId, String blockId) async {
+  Future<List<Song>> getSongs(String organizationId, String liturgyId, String blockId) async {
     try {
-      final snapshot = await _liturgiesCollection
+      final snapshot = await _liturgiesCollection(organizationId)
           .doc(liturgyId)
           .collection('bloques')
           .doc(blockId)
@@ -342,9 +349,9 @@ class LiturgyService {
 
   /// Crea una nueva canción en un bloque
   Future<String> createSong(
-      String liturgyId, String blockId, Song song) async {
+      String organizationId, String liturgyId, String blockId, Song song) async {
     try {
-      final docRef = await _liturgiesCollection
+      final docRef = await _liturgiesCollection(organizationId)
           .doc(liturgyId)
           .collection('bloques')
           .doc(blockId)
@@ -360,9 +367,9 @@ class LiturgyService {
 
   /// Actualiza una canción existente
   Future<void> updateSong(
-      String liturgyId, String blockId, Song song) async {
+      String organizationId, String liturgyId, String blockId, Song song) async {
     try {
-      await _liturgiesCollection
+      await _liturgiesCollection(organizationId)
           .doc(liturgyId)
           .collection('bloques')
           .doc(blockId)
@@ -377,9 +384,9 @@ class LiturgyService {
 
   /// Elimina una canción
   Future<void> deleteSong(
-      String liturgyId, String blockId, String songId) async {
+      String organizationId, String liturgyId, String blockId, String songId) async {
     try {
-      await _liturgiesCollection
+      await _liturgiesCollection(organizationId)
           .doc(liturgyId)
           .collection('bloques')
           .doc(blockId)

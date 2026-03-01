@@ -3,8 +3,14 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:worshippro/l10n/app_localizations.dart';
 import 'package:worshippro/models/liturgy.dart';
+import 'package:worshippro/providers/auth_provider.dart';
 import 'package:worshippro/providers/liturgy_provider.dart';
+import 'package:worshippro/providers/organization_provider.dart';
 import 'package:worshippro/screens/liturgy_editor_screen.dart';
+import 'package:worshippro/screens/organization/organization_selector_screen.dart';
+import 'package:worshippro/screens/auth/login_screen.dart';
+import 'package:worshippro/screens/organization/organization_settings_screen.dart';
+import 'package:worshippro/services/pdf_service.dart';
 import 'package:worshippro/utils/responsive_utils.dart';
 import 'package:worshippro/widgets/common_widgets.dart';
 import 'package:worshippro/widgets/language_selector.dart';
@@ -30,16 +36,108 @@ class _LiturgyListScreenState extends State<LiturgyListScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final orgProvider = context.watch<OrganizationProvider>();
+    final authProvider = context.watch<AuthProvider>();
     
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.appTitle),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.appTitle),
+            if (orgProvider.activeOrganization != null)
+              Text(
+                orgProvider.activeOrganization!.nombre,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.normal,
+                ),
+              ),
+          ],
+        ),
         actions: [
+          // Switch organization button
+          if ((authProvider.currentUser?.organizationIds.length ?? 0) > 1)
+            IconButton(
+              icon: const Icon(Icons.swap_horiz),
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const OrganizationSelectorScreen(),
+                  ),
+                );
+              },
+              tooltip: 'Cambiar Iglesia',
+            ),
+          
+          // Settings button
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const OrganizationSettingsScreen(),
+                ),
+              );
+            },
+            tooltip: 'Configuración',
+          ),
+          
           const LanguageSelector(),
+          
+          // About button
           IconButton(
             icon: const Icon(Icons.info_outline),
             onPressed: () => _showAboutDialog(context),
             tooltip: l10n.settings,
+          ),
+          
+          // Logout button
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.account_circle),
+            tooltip: 'Usuario',
+            onSelected: (value) {
+              if (value == 'logout') {
+                _handleLogout(context);
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'user',
+                enabled: false,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      authProvider.currentUser?.displayName ?? 'Usuario',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      authProvider.currentUser?.email ?? '',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout, size: 20),
+                    SizedBox(width: 12),
+                    Text('Cerrar Sesión'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -184,41 +282,43 @@ class _LiturgyListScreenState extends State<LiturgyListScreen> {
             itemCount: provider.liturgies.length,
             itemBuilder: (context, index) {
               final liturgy = provider.liturgies[index];
-              return Dismissible(
-                key: Key(liturgy.id),
-                direction: DismissDirection.endToStart,
-                background: Container(
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.only(right: 20),
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(16),
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Dismissible(
+                  key: Key(liturgy.id),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.delete,
+                      color: Colors.white,
+                      size: 32,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.delete,
-                    color: Colors.white,
-                    size: 32,
+                  confirmDismiss: (direction) async {
+                    return await ConfirmDialog.show(
+                      context,
+                      title: l10n.confirmDelete,
+                      message: l10n.confirmDeleteLiturgy,
+                      confirmText: l10n.delete,
+                      cancelText: l10n.cancel,
+                      isDestructive: true,
+                    );
+                  },
+                  onDismissed: (direction) {
+                    _deleteLiturgy(context, liturgy, requireConfirmation: false);
+                  },
+                  child: _LiturgyCard(
+                    liturgy: liturgy,
+                    onTap: () => _openLiturgyEditor(context, liturgy),
+                    onDelete: () => _deleteLiturgy(context, liturgy),
+                    isCompact: info.isMobile,
                   ),
-                ),
-                confirmDismiss: (direction) async {
-                  return await ConfirmDialog.show(
-                    context,
-                    title: l10n.confirmDelete,
-                    message: l10n.confirmDeleteLiturgy,
-                    confirmText: l10n.delete,
-                    cancelText: l10n.cancel,
-                    isDestructive: true,
-                  );
-                },
-                onDismissed: (direction) {
-                  _deleteLiturgy(context, liturgy, requireConfirmation: false);
-                },
-                child: _LiturgyCard(
-                  liturgy: liturgy,
-                  onTap: () => _openLiturgyEditor(context, liturgy),
-                  onDelete: () => _deleteLiturgy(context, liturgy),
-                  isCompact: info.isMobile,
                 ),
               );
             },
@@ -247,6 +347,42 @@ class _LiturgyListScreenState extends State<LiturgyListScreen> {
         );
       },
     );
+  }
+
+  void _handleLogout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cerrar Sesión'),
+        content: const Text('¿Estás seguro de que deseas cerrar sesión?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Cerrar Sesión'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      // Cerrar sesión
+      await context.read<AuthProvider>().signOut();
+      
+      // Navegar explícitamente al LoginScreen
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const LoginScreen(),
+          ),
+          (route) => false, // Eliminar todas las rutas anteriores
+        );
+      }
+    }
   }
 
   void _showAboutDialog(BuildContext context) {
@@ -291,9 +427,7 @@ class _LiturgyCard extends StatelessWidget {
     return ResponsiveBuilder(
       builder: (context, info) {
         return Card(
-          margin: isCompact 
-              ? const EdgeInsets.only(bottom: 12) 
-              : EdgeInsets.zero,
+          margin: EdgeInsets.zero,
           child: InkWell(
             onTap: onTap,
             onLongPress: () => _showContextMenu(context),
@@ -324,13 +458,30 @@ class _LiturgyCard extends StatelessWidget {
                             ),
                             SizedBox(height: info.isMobile ? 2 : 4),
                             Text(
-                              dateFormat.format(liturgy.fecha),
+                              liturgy.hora != null
+                                  ? '${dateFormat.format(liturgy.fecha)} · ${liturgy.hora}'
+                                  : dateFormat.format(liturgy.fecha),
                               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                 fontSize: info.fontSizeFor(14),
                               ),
                             ),
                           ],
                         ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.share_outlined),
+                        onPressed: () => _sharePdf(context),
+                        tooltip: 'Compartir PDF',
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy_outlined),
+                        onPressed: () => _duplicateLiturgy(context),
+                        tooltip: 'Duplicar',
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.picture_as_pdf_outlined),
+                        onPressed: () => _downloadPdf(context),
+                        tooltip: 'Descargar PDF',
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete_outline),
@@ -379,6 +530,87 @@ class _LiturgyCard extends StatelessWidget {
     );
   }
 
+  Future<void> _sharePdf(BuildContext context) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 20, height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              ),
+              SizedBox(width: 12),
+              Text('Generando PDF...'),
+            ],
+          ),
+          duration: Duration(seconds: 10),
+        ),
+      );
+      await PdfService.sharePdf(liturgy);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+      }
+    } catch (e) {
+      debugPrint('Error al compartir PDF: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al compartir el PDF: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _downloadPdf(BuildContext context) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 20, height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              ),
+              SizedBox(width: 12),
+              Text('Generando PDF...'),
+            ],
+          ),
+          duration: Duration(seconds: 10),
+        ),
+      );
+      final filePath = await PdfService.savePdf(liturgy);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        if (filePath != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('PDF guardado con éxito'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error al guardar PDF: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al guardar el PDF: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _duplicateLiturgy(BuildContext context) async {
     final provider = context.read<LiturgyProvider>();
     final newLiturgyId = await provider.duplicateLiturgy(liturgy.id);
@@ -416,6 +648,22 @@ class _LiturgyCard extends StatelessWidget {
               onTap: () {
                 Navigator.pop(context);
                 onTap();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.share_outlined),
+              title: const Text('Compartir PDF'),
+              onTap: () {
+                Navigator.pop(context);
+                _sharePdf(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf_outlined),
+              title: const Text('Descargar PDF'),
+              onTap: () {
+                Navigator.pop(context);
+                _downloadPdf(context);
               },
             ),
             ListTile(

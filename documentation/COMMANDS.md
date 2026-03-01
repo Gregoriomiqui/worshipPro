@@ -176,8 +176,11 @@ firebase projects:list
 # Seleccionar proyecto de Firebase
 firebase use <project_id>
 
-# Ver configuración actual
-firebase projects:list
+# Desplegar reglas de seguridad de Firestore
+firebase deploy --only firestore:rules
+
+# Ver índices de Firestore
+firebase firestore:indexes
 ```
 
 ---
@@ -210,15 +213,20 @@ flutter pub global run devtools
 ## 🔍 Debugging específico de Firebase
 
 ```bash
-# Ver logs de Firestore
-adb logcat | grep Firestore     # Android
-log stream | grep Firestore      # iOS
+# Ver logs de Firestore (Android)
+adb logcat | grep Firestore
+
+# Ver logs de Firestore (iOS)
+log stream | grep Firestore
 
 # Limpiar caché de Firebase (Android)
 adb shell pm clear com.google.android.gms
 
-# Ver reglas de Firestore
+# Ver estado de reglas de Firestore
 firebase firestore:indexes
+
+# Verificar SHA-1 del certificado (Android)
+cd android && ./gradlew signingReport
 ```
 
 ---

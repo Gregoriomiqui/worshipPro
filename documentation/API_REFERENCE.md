@@ -1,4 +1,4 @@
-# Guía de API - WorshipPro
+# Guía de API - WorshipPro v1.1
 
 ## Índice
 - [Modelos](#modelos)
@@ -6,10 +6,110 @@
 - [Services](#services)
 - [Widgets](#widgets)
 - [Utilidades](#utilidades)
+- [Localización](#localización)
 
 ---
 
 ## Modelos
+
+### User
+
+Modelo de usuario autenticado.
+
+```dart
+class User {
+  final String id;
+  final String email;
+  final String displayName;
+  final String? photoURL;
+  final List<String> organizationIds;
+  final String? activeOrganizationId;
+  final List<String> authProviders; // ["password", "google.com"]
+  final DateTime createdAt;
+  final DateTime updatedAt;
+}
+```
+
+#### Métodos
+- `toMap()` → `Map<String, dynamic>`
+- `factory User.fromMap(Map<String, dynamic> map, String id)`
+- `copyWith({...})`
+
+---
+
+### Organization
+
+Modelo de organización (iglesia).
+
+```dart
+class Organization {
+  final String id;
+  final String nombre;
+  final String? descripcion;
+  final String createdBy; // userId del creador
+  final DateTime createdAt;
+  final DateTime updatedAt;
+}
+```
+
+#### Métodos
+- `toMap()` → `Map<String, dynamic>`
+- `factory Organization.fromMap(Map<String, dynamic> map, String id)`
+- `copyWith({...})`
+
+---
+
+### Member
+
+Modelo de miembro de una organización.
+
+```dart
+enum MemberRole { admin, member }
+
+class Member {
+  final String id;
+  final String email;
+  final String displayName;
+  final MemberRole role;
+  final DateTime joinedAt;
+  final String? invitedBy;
+}
+```
+
+#### Métodos
+- `toMap()` → `Map<String, dynamic>`
+- `factory Member.fromMap(Map<String, dynamic> map, String id)`
+- `copyWith({...})`
+
+---
+
+### Invitation
+
+Modelo de invitación a una organización.
+
+```dart
+enum InvitationStatus { pending, accepted, rejected }
+
+class Invitation {
+  final String id;
+  final String organizationId;
+  final String organizationName;
+  final String email;
+  final MemberRole role;
+  final String invitedBy;
+  final String invitedByName;
+  final InvitationStatus status;
+  final DateTime createdAt;
+  final DateTime? expiresAt;
+}
+```
+
+#### Métodos
+- `toMap()` → `Map<String, dynamic>`
+- `factory Invitation.fromMap(Map<String, dynamic> map, String id)`
+- `copyWith({...})`
+
+---
 
 ### Liturgy
 
@@ -20,6 +120,7 @@ class Liturgy {
   final String id;
   final String titulo;
   final DateTime fecha;
+  final String? hora;         // Nuevo en v1.1
   final String? descripcion;
   final List<LiturgyBlock> bloques;
   final DateTime createdAt;
@@ -27,62 +128,14 @@ class Liturgy {
 }
 ```
 
-#### Constructores
-
-**Constructor principal**
-```dart
-Liturgy({
-  required String id,
-  required String titulo,
-  required DateTime fecha,
-  String? descripcion,
-  List<LiturgyBlock> bloques = const [],
-  required DateTime createdAt,
-  required DateTime updatedAt,
-})
-```
-
-**Factory fromMap**
-```dart
-factory Liturgy.fromMap(Map<String, dynamic> map, String id)
-```
-Convierte datos de Firestore a objeto Liturgy.
+#### Computed Properties
+- `duracionTotalMinutos` → `int` — Suma de duración de todos los bloques
+- `duracionTotalFormateada` → `String` — "2h 30min" o "45 min"
 
 #### Métodos
-
-**toMap()**
-```dart
-Map<String, dynamic> toMap()
-```
-Convierte Liturgy a formato para Firestore.
-
-**copyWith()**
-```dart
-Liturgy copyWith({
-  String? id,
-  String? titulo,
-  DateTime? fecha,
-  String? descripcion,
-  List<LiturgyBlock>? bloques,
-  DateTime? createdAt,
-  DateTime? updatedAt,
-})
-```
-Crea copia con valores actualizados.
-
-#### Computed Properties
-
-**duracionTotalMinutos**
-```dart
-int get duracionTotalMinutos
-```
-Suma total de duración de todos los bloques.
-
-**duracionTotalFormateada**
-```dart
-String get duracionTotalFormateada
-```
-Devuelve duración formateada: "2h 30min" o "45 min".
+- `toMap()` → `Map<String, dynamic>`
+- `factory Liturgy.fromMap(Map<String, dynamic> map, String id)`
+- `copyWith({...})`
 
 ---
 
@@ -94,7 +147,7 @@ Representa un bloque dentro de una liturgia.
 class LiturgyBlock {
   final String id;
   final BlockType tipo;
-  final String? descripcion;      // OPCIONAL desde v1.1
+  final String? descripcion;      // OPCIONAL
   final List<String> responsables;
   final String? comentarios;
   final int duracionMinutos;
@@ -103,66 +156,25 @@ class LiturgyBlock {
 }
 ```
 
-#### Constructores
-
-**Constructor principal**
-```dart
-LiturgyBlock({
-  required String id,
-  required BlockType tipo,
-  String? descripcion,           // OPCIONAL
-  required List<String> responsables,
-  String? comentarios,
-  required int duracionMinutos,
-  required int orden,
-  List<Song> canciones = const [],
-})
-```
-
-**Factory fromMap**
-```dart
-factory LiturgyBlock.fromMap(Map<String, dynamic> map, String id)
-```
+#### Computed Properties
+- `isAdoracion` → `bool` — `true` si tipo es `BlockType.adoracionAlabanza`
 
 #### Métodos
-
-**toMap()**
-```dart
-Map<String, dynamic> toMap()
-```
-
-**copyWith()**
-```dart
-LiturgyBlock copyWith({
-  String? id,
-  BlockType? tipo,
-  String? descripcion,
-  List<String>? responsables,
-  String? comentarios,
-  int? duracionMinutos,
-  int? orden,
-  List<Song>? canciones,
-})
-```
-
-#### Computed Properties
-
-**isAdoracion**
-```dart
-bool get isAdoracion
-```
-Devuelve `true` si el tipo es `BlockType.adoracionAlabanza`.
+- `toMap()` → `Map<String, dynamic>`
+- `factory LiturgyBlock.fromMap(Map<String, dynamic> map, String id)`
+- `copyWith({...})`
 
 ---
 
 ### BlockType
 
-Enum que define los tipos de bloques disponibles.
+Enum que define los **10 tipos** de bloques disponibles.
 
 ```dart
 enum BlockType {
   adoracionAlabanza,
   oracion,
+  lecturaBiblica,    // Nuevo en v1.1
   reflexion,
   accionGracias,
   ofrendas,
@@ -174,26 +186,11 @@ enum BlockType {
 ```
 
 #### Propiedades
-
-**translationKey**
-```dart
-String get translationKey
-```
-Clave para traducción ('worship', 'prayer', etc.).
-
-**displayName**
-```dart
-String get displayName
-```
-Nombre en español (retrocompatibilidad).
+- `translationKey` → `String` — Clave para traducción ('worship', 'prayer', 'bibleReading', etc.)
+- `displayName` → `String` — Nombre en español (retrocompatibilidad)
 
 #### Métodos
-
-**getDisplayName(BuildContext context)**
-```dart
-String getDisplayName(BuildContext context)
-```
-Devuelve nombre traducido según idioma activo.
+- `getDisplayName(BuildContext context)` → `String` — Nombre traducido según idioma activo
 
 ---
 
@@ -205,165 +202,131 @@ Representa una canción dentro de un bloque de adoración.
 class Song {
   final String id;
   final String nombre;
+  final String? autor;
   final String? tono;
 }
 ```
 
-#### Constructores
-
-**Constructor principal**
-```dart
-Song({
-  required String id,
-  required String nombre,
-  String? tono,
-})
-```
-
-**Factory fromMap**
-```dart
-factory Song.fromMap(Map<String, dynamic> map, String id)
-```
-
 #### Métodos
-
-**toMap()**
-```dart
-Map<String, dynamic> toMap()
-```
-
-**copyWith()**
-```dart
-Song copyWith({
-  String? id,
-  String? nombre,
-  String? tono,
-})
-```
+- `toMap()` → `Map<String, dynamic>`
+- `factory Song.fromMap(Map<String, dynamic> map, String id)`
+- `copyWith({...})`
 
 ---
 
 ## Providers
 
+### AuthProvider
+
+Gestiona el estado de autenticación.
+
+```dart
+class AuthProvider extends ChangeNotifier
+```
+
+#### Propiedades Públicas
+```dart
+AuthStatus get status              // initial, authenticated, unauthenticated, loading
+User? get currentUser              // Usuario actual autenticado
+String? get error                  // Mensaje de error
+bool get isAuthenticated           // true si status == authenticated
+```
+
+#### Métodos
+```dart
+Future<void> registerWithEmail(String email, String password, String displayName)
+Future<void> loginWithEmail(String email, String password)
+Future<void> loginWithGoogle()
+Future<void> logout()
+Future<void> resetPassword(String email)
+void clearError()
+```
+
+**Nota:** Escucha automáticamente `FirebaseAuth.authStateChanges()` y recarga datos del usuario desde Firestore.
+
+---
+
+### OrganizationProvider
+
+Gestiona organizaciones, miembros e invitaciones.
+
+```dart
+class OrganizationProvider extends ChangeNotifier
+```
+
+#### Propiedades Públicas
+```dart
+List<Organization> get organizations     // Organizaciones del usuario
+Organization? get activeOrganization     // Organización activa
+String? get activeOrganizationId         // ID de la org activa
+List<Member> get members                 // Miembros de la org activa
+List<Invitation> get invitations         // Invitaciones pendientes del usuario
+bool get isLoading
+String? get error
+```
+
+#### Métodos
+```dart
+Future<void> loadUserOrganizations(String userId)
+Future<void> setActiveOrganization(String orgId)
+Future<String?> createOrganization(String nombre, String? descripcion)
+Future<void> loadMembers()
+Future<void> inviteMember(String email, MemberRole role)
+Future<void> removeMember(String memberId)
+Future<void> updateMemberRole(String memberId, MemberRole newRole)
+Future<void> loadInvitations(String email)
+Future<void> acceptInvitation(Invitation invitation)
+Future<void> rejectInvitation(String invitationId)
+```
+
+---
+
 ### LiturgyProvider
 
-Gestiona el estado de las liturgias.
+Gestiona el estado de las liturgias. **Requiere contexto de organización.**
 
 ```dart
 class LiturgyProvider extends ChangeNotifier
 ```
 
 #### Propiedades Públicas
-
 ```dart
 List<Liturgy> get liturgies           // Lista de todas las liturgias
 Liturgy? get currentLiturgy           // Liturgia actual en edición
-bool get isLoading                    // Estado de carga
-String? get error                     // Mensaje de error actual
+bool get isLoading
+String? get error
 ```
 
-#### Métodos Públicos
-
-**initLiturgiesListener()**
+#### Métodos
 ```dart
+void setContext(String organizationId, String userId)  // ⚠️ Llamar antes de usar
 Future<void> initLiturgiesListener()
-```
-Inicia listener en tiempo real para obtener todas las liturgias.
-- Actualiza automáticamente con cambios en Firebase
-- Llama a `notifyListeners()` en cada cambio
-
-**loadLiturgy(String liturgyId)**
-```dart
 Future<void> loadLiturgy(String liturgyId)
-```
-Carga una liturgia específica con todos sus bloques.
-- Parámetros:
-  - `liturgyId`: ID de la liturgia a cargar
-- Actualiza `currentLiturgy`
-- Llama a `notifyListeners()`
-
-**createLiturgy(Liturgy liturgy)**
-```dart
 Future<String?> createLiturgy(Liturgy liturgy)
-```
-Crea una nueva liturgia en Firebase.
-- Parámetros:
-  - `liturgy`: Objeto Liturgy a crear
-- Retorna: ID de la liturgia creada o `null` si falla
-
-**updateLiturgy(Liturgy liturgy)**
-```dart
 Future<bool> updateLiturgy(Liturgy liturgy)
-```
-Actualiza una liturgia existente.
-- Parámetros:
-  - `liturgy`: Liturgia con datos actualizados
-- Retorna: `true` si éxito, `false` si falla
-
-**deleteLiturgy(String liturgyId)**
-```dart
 Future<bool> deleteLiturgy(String liturgyId)
-```
-Elimina una liturgia y todos sus bloques/canciones.
-- Parámetros:
-  - `liturgyId`: ID de la liturgia a eliminar
-- Retorna: `true` si éxito, `false` si falla
-
-**clearError()**
-```dart
 void clearError()
 ```
-Limpia el mensaje de error actual.
 
 ---
 
 ### BlockProvider
 
-Gestiona operaciones CRUD de bloques.
+Gestiona operaciones CRUD de bloques y canciones. **Requiere contexto de organización.**
 
 ```dart
 class BlockProvider extends ChangeNotifier
 ```
 
-#### Métodos Públicos
-
-**createBlock(String liturgyId, LiturgyBlock block)**
+#### Métodos
 ```dart
+void setOrganizationId(String organizationId)  // ⚠️ Llamar antes de usar
 Future<String?> createBlock(String liturgyId, LiturgyBlock block)
-```
-Crea un nuevo bloque en una liturgia.
-- Parámetros:
-  - `liturgyId`: ID de la liturgia padre
-  - `block`: Bloque a crear
-- Retorna: ID del bloque creado o `null` si falla
-
-**updateBlock(String liturgyId, LiturgyBlock block)**
-```dart
 Future<bool> updateBlock(String liturgyId, LiturgyBlock block)
-```
-Actualiza un bloque existente.
-- Retorna: `true` si éxito, `false` si falla
-
-**deleteBlock(String liturgyId, String blockId)**
-```dart
 Future<bool> deleteBlock(String liturgyId, String blockId)
-```
-Elimina un bloque y todas sus canciones.
-- Retorna: `true` si éxito, `false` si falla
-
-**createSong(String liturgyId, String blockId, Song song)**
-```dart
 Future<String?> createSong(String liturgyId, String blockId, Song song)
-```
-Crea una canción en un bloque de adoración.
-- Retorna: ID de la canción creada o `null` si falla
-
-**deleteSong(String liturgyId, String blockId, String songId)**
-```dart
 Future<bool> deleteSong(String liturgyId, String blockId, String songId)
 ```
-Elimina una canción específica.
-- Retorna: `true` si éxito, `false` si falla
 
 ---
 
@@ -376,124 +339,146 @@ class LanguageProvider extends ChangeNotifier
 ```
 
 #### Propiedades Públicas
-
 ```dart
 Locale get locale                     // Locale actual (es/en)
-bool get isSpanish                    // true si idioma es español
-bool get isEnglish                    // true si idioma es inglés
+bool get isSpanish
+bool get isEnglish
 ```
 
-#### Métodos Públicos
-
-**setLocale(Locale locale)**
+#### Métodos
 ```dart
 Future<void> setLocale(Locale locale)
-```
-Cambia el idioma de la aplicación.
-- Guarda en SharedPreferences
-- Llama a `notifyListeners()`
-
-**setLanguage(String languageCode)**
-```dart
 Future<void> setLanguage(String languageCode)
-```
-Cambia idioma usando código ('es' o 'en').
-
-**toggleLanguage()**
-```dart
 Future<void> toggleLanguage()
 ```
-Alterna entre español e inglés.
 
 ---
 
 ## Services
 
+### AuthService
+
+Servicio de autenticación con Firebase Auth.
+
+```dart
+class AuthService
+```
+
+#### Métodos
+```dart
+// Registro y Login
+Future<UserCredential> registerWithEmail(String email, String password, String displayName)
+Future<UserCredential> loginWithEmail(String email, String password)
+Future<UserCredential> signInWithGoogle()
+Future<void> linkGoogleAccount()
+Future<void> sendPasswordResetEmail(String email)
+Future<void> signOut()
+
+// Gestión de usuario en Firestore
+Future<void> createUserDocument(FirebaseUser user, {String? displayName})
+Future<User?> getUserFromFirestore(String uid)
+Future<void> updateUserActiveOrganization(String uid, String orgId)
+```
+
+**Excepciones:** Lanza `AuthException` con códigos específicos (email-already-in-use, wrong-password, etc.)
+
+---
+
+### OrganizationService
+
+Servicio de gestión de organizaciones con Firestore.
+
+```dart
+class OrganizationService
+```
+
+#### Métodos - Organizaciones
+```dart
+Future<String> createOrganization(String nombre, String? descripcion, String userId, String userEmail, String userDisplayName)
+Future<Organization?> getOrganization(String orgId)
+Future<List<Organization>> getUserOrganizations(String userId)
+Future<void> updateOrganization(String orgId, {String? nombre, String? descripcion})
+Future<void> deleteOrganization(String orgId)
+```
+
+#### Métodos - Miembros
+```dart
+Future<List<Member>> getMembers(String orgId)
+Future<int> getMembersCount(String orgId)
+Future<bool> isUserAdmin(String orgId, String userId)
+Future<void> addMember(String orgId, String userId, String email, String displayName, MemberRole role)
+Future<void> removeMember(String orgId, String userId)
+Future<void> updateMemberRole(String orgId, String userId, MemberRole newRole)
+```
+
+#### Métodos - Invitaciones
+```dart
+Future<String> createInvitation(String orgId, String orgName, String email, MemberRole role, String invitedBy, String invitedByName)
+Future<List<Invitation>> getPendingInvitations(String email)
+Future<void> acceptInvitation(Invitation invitation, String userId, String displayName)
+Future<void> rejectInvitation(String invitationId)
+```
+
+---
+
 ### LiturgyService
 
-Servicio que maneja todas las operaciones con Firebase.
+Servicio multi-tenant para liturgias. **Todos los métodos requieren `organizationId`.**
+
+Path base: `organizations/{orgId}/liturgias/`
 
 ```dart
 class LiturgyService
 ```
 
 #### Métodos - Liturgias
-
-**streamLiturgies()**
 ```dart
-Stream<List<Liturgy>> streamLiturgies()
+Stream<List<Liturgy>> streamLiturgies(String organizationId)
+Future<Liturgy?> getLiturgyById(String organizationId, String liturgyId)
+Future<String> createLiturgy(String organizationId, Liturgy liturgy)
+Future<void> updateLiturgy(String organizationId, Liturgy liturgy)
+Future<void> deleteLiturgy(String organizationId, String liturgyId)
+Future<String> duplicateLiturgy(String organizationId, String liturgyId)
 ```
-Stream en tiempo real de todas las liturgias ordenadas por fecha.
-
-**getLiturgyById(String liturgyId)**
-```dart
-Future<Liturgy?> getLiturgyById(String liturgyId)
-```
-Obtiene una liturgia específica con todos sus bloques.
-
-**createLiturgy(Liturgy liturgy)**
-```dart
-Future<String> createLiturgy(Liturgy liturgy)
-```
-Crea nueva liturgia en Firestore.
-
-**updateLiturgy(Liturgy liturgy)**
-```dart
-Future<void> updateLiturgy(Liturgy liturgy)
-```
-Actualiza liturgia existente.
-
-**deleteLiturgy(String liturgyId)**
-```dart
-Future<void> deleteLiturgy(String liturgyId)
-```
-Elimina liturgia y todos sus datos relacionados.
 
 #### Métodos - Bloques
-
-**getBlocks(String liturgyId)**
 ```dart
-Future<List<LiturgyBlock>> getBlocks(String liturgyId)
+Future<List<LiturgyBlock>> getBlocks(String organizationId, String liturgyId)
+Future<String> createBlock(String organizationId, String liturgyId, LiturgyBlock block)
+Future<void> updateBlock(String organizationId, String liturgyId, LiturgyBlock block)
+Future<void> deleteBlock(String organizationId, String liturgyId, String blockId)
 ```
-Obtiene todos los bloques de una liturgia ordenados.
-
-**createBlock(String liturgyId, LiturgyBlock block)**
-```dart
-Future<String> createBlock(String liturgyId, LiturgyBlock block)
-```
-Crea nuevo bloque en subcollection.
-
-**updateBlock(String liturgyId, LiturgyBlock block)**
-```dart
-Future<void> updateBlock(String liturgyId, LiturgyBlock block)
-```
-Actualiza bloque existente.
-
-**deleteBlock(String liturgyId, String blockId)**
-```dart
-Future<void> deleteBlock(String liturgyId, String blockId)
-```
-Elimina bloque y todas sus canciones.
 
 #### Métodos - Canciones
-
-**getSongs(String liturgyId, String blockId)**
 ```dart
-Future<List<Song>> getSongs(String liturgyId, String blockId)
+Future<List<Song>> getSongs(String organizationId, String liturgyId, String blockId)
+Future<String> createSong(String organizationId, String liturgyId, String blockId, Song song)
+Future<void> deleteSong(String organizationId, String liturgyId, String blockId, String songId)
 ```
-Obtiene todas las canciones de un bloque.
 
-**createSong(String liturgyId, String blockId, Song song)**
-```dart
-Future<String> createSong(String liturgyId, String blockId, Song song)
-```
-Crea canción en subcollection de bloque.
+---
 
-**deleteSong(String liturgyId, String blockId, String songId)**
+### PdfService
+
+Servicio de generación y exportación de PDF.
+
 ```dart
-Future<void> deleteSong(String liturgyId, String blockId, String songId)
+class PdfService
 ```
-Elimina canción específica.
+
+#### Métodos
+```dart
+Future<Uint8List> generateLiturgyPdf(Liturgy liturgy)
+Future<void> sharePdf(Liturgy liturgy)
+Future<void> savePdf(Liturgy liturgy)
+```
+
+**Características del PDF generado:**
+- Formato A4
+- Header con título, fecha, hora y descripción
+- Cards de bloques con tipo, duración, responsables y comentarios
+- Lista de canciones con autor y tono para bloques de adoración
+- Footer con información de la app
 
 ---
 
@@ -505,10 +490,8 @@ Elimina canción específica.
 ```dart
 class LoadingWidget extends StatelessWidget {
   final String? message;
-  const LoadingWidget({Key? key, this.message});
 }
 ```
-Muestra indicador de carga circular con mensaje opcional.
 
 #### EmptyStateWidget
 ```dart
@@ -517,32 +500,16 @@ class EmptyStateWidget extends StatelessWidget {
   final String title;
   final String subtitle;
   final Widget? action;
-  
-  const EmptyStateWidget({
-    Key? key,
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    this.action,
-  });
 }
 ```
-Muestra estado vacío con ícono, texto y acción opcional.
 
 #### ErrorStateWidget
 ```dart
 class ErrorStateWidget extends StatelessWidget {
   final String message;
   final VoidCallback? onRetry;
-  
-  const ErrorStateWidget({
-    Key? key,
-    required this.message,
-    this.onRetry,
-  });
 }
 ```
-Muestra error con opción de reintentar.
 
 #### ConfirmDialog
 ```dart
@@ -557,15 +524,12 @@ class ConfirmDialog {
   })
 }
 ```
-Diálogo de confirmación. Retorna `true` si confirma.
 
 ### LanguageSelector
 ```dart
-class LanguageSelector extends StatelessWidget {
-  const LanguageSelector({Key? key});
-}
+class LanguageSelector extends StatelessWidget
 ```
-PopupMenu para cambiar idioma (ES/EN) con indicador visual.
+PopupMenu para cambiar idioma (ES/EN) con indicador visual del idioma actual.
 
 ---
 
@@ -577,91 +541,45 @@ PopupMenu para cambiar idioma (ES/EN) con indicador visual.
 ```dart
 class Breakpoints {
   static const double mobile = 600;
-  static const double tablet = 1200;
-  
+  static const double tablet = 900;
+  static const double desktop = 1200;
+
   static bool isMobile(BuildContext context);
   static bool isTablet(BuildContext context);
   static bool isDesktop(BuildContext context);
-  static bool isPortrait(BuildContext context);
-  static bool isLandscape(BuildContext context);
 }
 ```
 
 #### ResponsiveInfo
 ```dart
 class ResponsiveInfo {
-  final BuildContext context;
-  
-  // Propiedades
-  DeviceType get deviceType;          // mobile, tablet, desktop
-  bool get isMobile;
-  bool get isTablet;
-  bool get isDesktop;
-  bool get isPortrait;
-  bool get isLandscape;
-  double get width;
-  double get height;
-  
-  // Métodos
-  T valueByDevice<T>({
-    required T mobile,
-    T? tablet,
-    T? desktop,
-  });
-  
-  EdgeInsets get adaptivePadding;     // 16/24/32
-  double get paddingValue;            // 16.0/24.0/32.0
-  double get adaptiveSpacing;         // 12.0/16.0/20.0
-  
-  double fontSizeFor(double baseSize); // Escala: 0.9x/1x/1.1x
-  double iconSizeFor(double baseSize); // Escala: 0.85x/1x/1.15x
+  DeviceType get deviceType;
+  bool get isMobile / isTablet / isDesktop;
+  bool get isPortrait / isLandscape;
+  double get width / height;
+
+  T valueByDevice<T>({required T mobile, T? tablet, T? desktop});
+  EdgeInsets get adaptivePadding;
+  double get paddingValue;       // 16/24/32
+  double get adaptiveSpacing;    // 12/16/20
+  double fontSizeFor(double baseSize);  // 0.9x/1x/1.1x
+  double iconSizeFor(double baseSize);  // 0.85x/1x/1.15x
 }
 ```
 
 #### ResponsiveBuilder
 ```dart
-class ResponsiveBuilder extends StatelessWidget {
-  final Widget Function(BuildContext context, ResponsiveInfo info) builder;
-  
-  const ResponsiveBuilder({
-    Key? key,
-    required this.builder,
-  });
-}
-```
-
-**Uso:**
-```dart
 ResponsiveBuilder(
   builder: (context, info) {
     return Container(
       padding: EdgeInsets.all(info.paddingValue),
-      child: Text(
-        'Responsive Text',
-        style: TextStyle(fontSize: info.fontSizeFor(16)),
-      ),
+      child: Text('Text', style: TextStyle(fontSize: info.fontSizeFor(16))),
     );
   },
 )
 ```
 
 #### ResponsiveLayout
-```dart
-class ResponsiveLayout extends StatelessWidget {
-  final Widget mobile;
-  final Widget? tablet;
-  final Widget? desktop;
-  
-  const ResponsiveLayout({
-    Key? key,
-    required this.mobile,
-    this.tablet,
-    this.desktop,
-  });
-}
-```
-
-**Uso:**
 ```dart
 ResponsiveLayout(
   mobile: MobileWidget(),
@@ -679,102 +597,106 @@ ResponsiveLayout(
 ```dart
 class AppLocalizations {
   final Locale locale;
-  
+
   static AppLocalizations of(BuildContext context);
   String translate(String key);
-  
-  // Getters (70+ disponibles)
+
+  // 70+ getters disponibles
   String get appTitle;
   String get loading;
-  String get error;
-  String get save;
-  String get delete;
-  // ... etc
+  // ...
 }
 ```
 
-**Uso:**
+### Uso
 ```dart
 final l10n = AppLocalizations.of(context);
 Text(l10n.appTitle);
 ```
 
-### Traducciones Disponibles
-
-**General:** appTitle, loading, error, cancel, delete, save, edit, add, search, settings, language, spanish, english
-
-**Liturgias:** liturgiesList, noLiturgies, noLiturgiesDesc, createLiturgy, blocks, minutes, newLiturgy, editLiturgy
-
-**Bloques:** blockType, description, duration, responsible, comments, addSong, addBlock, noBlocks
-
-**Tipos:** welcome, worship, prayer, sermon, offering, communion, announcement, blessing, other
-
-**Canciones:** songName, key, songs, noSongs
-
-**Presentación:** presentationMode, next, previous, exit
-
-**Diálogos:** confirmDelete, confirmDeleteLiturgy, confirmDeleteBlock, confirmDeleteSong
-
-**Errores:** errorLoadingLiturgies, errorSavingLiturgy, errorDeletingLiturgy, liturgyCreatedSuccess, liturgyUpdatedSuccess, liturgyDeletedSuccess, fillRequiredFields
+### Categorías de traducciones
+- **General:** appTitle, loading, error, cancel, delete, save, edit, add, search, settings, language
+- **Auth:** login, register, email, password, forgotPassword, loginWithGoogle
+- **Organizaciones:** organization, createOrganization, members, invitations, admin, member
+- **Liturgias:** liturgiesList, noLiturgies, createLiturgy, blocks, minutes, newLiturgy, editLiturgy
+- **Bloques:** blockType, description, duration, responsible, comments, addBlock, noBlocks
+- **Tipos (10):** welcome, worship, prayer, bibleReading, sermon, offering, communion, announcement, blessing, other
+- **Canciones:** songName, key, songs, noSongs, addSong
+- **Presentación:** presentationMode, next, previous, exit
+- **Diálogos:** confirmDelete, confirmDeleteLiturgy, confirmDeleteBlock, confirmDeleteSong
+- **Errores:** errorLoadingLiturgies, errorSavingLiturgy, fillRequiredFields
 
 ---
 
 ## Ejemplos de Uso
 
-### Crear una Liturgia
+### Autenticación
 ```dart
+// Registro
+await context.read<AuthProvider>().registerWithEmail(email, password, displayName);
+
+// Login con Google
+await context.read<AuthProvider>().loginWithGoogle();
+
+// Logout
+await context.read<AuthProvider>().logout();
+```
+
+### Organizaciones
+```dart
+// Crear organización
+final orgId = await context.read<OrganizationProvider>()
+    .createOrganization('Mi Iglesia', 'Descripción opcional');
+
+// Invitar miembro
+await context.read<OrganizationProvider>()
+    .inviteMember('email@ejemplo.com', MemberRole.member);
+```
+
+### Liturgias (requiere contexto de org)
+```dart
+// Crear liturgia
 final liturgy = Liturgy(
   id: const Uuid().v4(),
   titulo: 'Culto Dominical',
   fecha: DateTime.now(),
-  descripcion: 'Culto de celebración',
+  hora: '10:00',
   createdAt: DateTime.now(),
   updatedAt: DateTime.now(),
 );
-
 final liturgyId = await context.read<LiturgyProvider>().createLiturgy(liturgy);
 ```
 
-### Agregar un Bloque
+### Bloques (requiere contexto de org)
 ```dart
 final block = LiturgyBlock(
   id: const Uuid().v4(),
   tipo: BlockType.adoracionAlabanza,
-  descripcion: 'Tiempo de alabanza', // Opcional
+  descripcion: 'Tiempo de alabanza',
   responsables: ['Juan', 'María'],
   duracionMinutos: 20,
   orden: 0,
 );
-
 await context.read<BlockProvider>().createBlock(liturgyId, block);
-await context.read<LiturgyProvider>().loadLiturgy(liturgyId); // Refrescar
+```
+
+### Exportar a PDF
+```dart
+// Compartir
+await PdfService().sharePdf(liturgy);
+
+// Guardar
+await PdfService().savePdf(liturgy);
 ```
 
 ### Escuchar Cambios
 ```dart
-Consumer<LiturgyProvider>(
-  builder: (context, provider, child) {
-    if (provider.isLoading) {
-      return LoadingWidget();
+Consumer<AuthProvider>(
+  builder: (context, auth, child) {
+    if (auth.status == AuthStatus.unauthenticated) {
+      return LoginScreen();
     }
-    
-    if (provider.error != null) {
-      return ErrorStateWidget(message: provider.error!);
-    }
-    
-    return ListView.builder(
-      itemCount: provider.liturgies.length,
-      itemBuilder: (context, index) {
-        final liturgy = provider.liturgies[index];
-        return ListTile(title: Text(liturgy.titulo));
-      },
-    );
+    return LiturgyListScreen();
   },
 )
-```
-
-### Cambiar Idioma
-```dart
-final languageProvider = context.read<LanguageProvider>();
-await languageProvider.setLanguage('en'); // o 'es'
 ```

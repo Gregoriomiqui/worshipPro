@@ -1,9 +1,96 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if false;
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function isMemberOf(organizationId) {
+      return isAuthenticated() && 
+             organizationId in getUserData().organizationIds;
+    }
+    
+    function isAdminOf(organizationId) {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/organizations/$(organizationId)/members/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Users can read/write their own document
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Allow reading specific fields for invitations
+      allow get: if isAuthenticated();
+    }
+    
+    // Organizations collection
+    match /organizations/{organizationId} {
+      // Read: if user is member
+      allow read: if isMemberOf(organizationId);
+      
+      // Create: any authenticated user (when creating new org)
+      allow create: if isAuthenticated() && 
+                       request.resource.data.createdBy == request.auth.uid;
+      
+      // Update/Delete: only admins
+      allow update, delete: if isAdminOf(organizationId);
+      
+      // Members subcollection
+      match /members/{memberId} {
+        // Read: if user is member of the organization
+        allow read: if isMemberOf(organizationId);
+        
+        // Create: admins, OR the org creator adding themselves as first member
+        allow create: if isAdminOf(organizationId) || 
+                         (isAuthenticated() && 
+                          get(/databases/$(database)/documents/organizations/$(organizationId)).data.createdBy == request.auth.uid &&
+                          memberId == request.auth.uid);
+        
+        // Update/Delete: only admins
+        allow update, delete: if isAdminOf(organizationId);
+      }
+      
+      // Liturgies subcollection
+      match /liturgias/{liturgyId} {
+        // Read/Write: if user is member of the organization
+        allow read, write: if isMemberOf(organizationId);
+        
+        // Bloques subcollection
+        match /bloques/{blockId} {
+          allow read, write: if isMemberOf(organizationId);
+          
+          // Canciones subcollection
+          match /canciones/{songId} {
+            allow read, write: if isMemberOf(organizationId);
+          }
+        }
+      }
+    }
+    
+    // Invitations collection
+    match /invitations/{invitationId} {
+      // Read: if addressed to the user's email
+      allow read: if isAuthenticated() && 
+                     request.auth.token.email == resource.data.email;
+      
+      // Create: only admins of the organization
+      allow create: if isAuthenticated() && 
+                       isAdminOf(request.resource.data.organizationId);
+      
+      // Update: user can accept/reject their own invitation
+      allow update: if isAuthenticated() && 
+                       request.auth.token.email == resource.data.email;
+      
+      // Delete: admins can delete invitations
+      allow delete: if isAuthenticated() && 
+                       isAdminOf(resource.data.organizationId);
     }
   }
 }

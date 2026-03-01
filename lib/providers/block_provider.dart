@@ -4,24 +4,37 @@ import 'package:worshippro/models/song.dart';
 import 'package:worshippro/services/liturgy_service.dart';
 
 /// Provider para gestionar bloques de culto
+/// Versión 1.1: Multi-tenant con organizationId
 class BlockProvider with ChangeNotifier {
   final LiturgyService _liturgyService = LiturgyService();
 
   bool _isLoading = false;
   String? _error;
+  String? _organizationId; // Nueva: ID de la organización activa
 
   // Getters
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  /// Establece el ID de la organización activa
+  void setOrganizationId(String organizationId) {
+    _organizationId = organizationId;
+  }
+
   /// Crea un nuevo bloque
   Future<String?> createBlock(String liturgyId, LiturgyBlock block) async {
+    if (_organizationId == null) {
+      _error = 'No hay organización activa';
+      notifyListeners();
+      return null;
+    }
+
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final blockId = await _liturgyService.createBlock(liturgyId, block);
+      final blockId = await _liturgyService.createBlock(_organizationId!, liturgyId, block);
       _error = null;
       _isLoading = false;
       notifyListeners();
@@ -36,12 +49,18 @@ class BlockProvider with ChangeNotifier {
 
   /// Actualiza un bloque existente
   Future<bool> updateBlock(String liturgyId, LiturgyBlock block) async {
+    if (_organizationId == null) {
+      _error = 'No hay organización activa';
+      notifyListeners();
+      return false;
+    }
+
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      await _liturgyService.updateBlock(liturgyId, block);
+      await _liturgyService.updateBlock(_organizationId!, liturgyId, block);
       _error = null;
       _isLoading = false;
       notifyListeners();
@@ -56,12 +75,18 @@ class BlockProvider with ChangeNotifier {
 
   /// Elimina un bloque
   Future<bool> deleteBlock(String liturgyId, String blockId) async {
+    if (_organizationId == null) {
+      _error = 'No hay organización activa';
+      notifyListeners();
+      return false;
+    }
+
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      await _liturgyService.deleteBlock(liturgyId, blockId);
+      await _liturgyService.deleteBlock(_organizationId!, liturgyId, blockId);
       _error = null;
       _isLoading = false;
       notifyListeners();
@@ -77,13 +102,19 @@ class BlockProvider with ChangeNotifier {
   /// Crea una nueva canción en un bloque
   Future<String?> createSong(
       String liturgyId, String blockId, Song song) async {
+    if (_organizationId == null) {
+      _error = 'No hay organización activa';
+      notifyListeners();
+      return null;
+    }
+
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
       final songId =
-          await _liturgyService.createSong(liturgyId, blockId, song);
+          await _liturgyService.createSong(_organizationId!, liturgyId, blockId, song);
       _error = null;
       _isLoading = false;
       notifyListeners();
@@ -99,12 +130,18 @@ class BlockProvider with ChangeNotifier {
   /// Actualiza una canción existente
   Future<bool> updateSong(
       String liturgyId, String blockId, Song song) async {
+    if (_organizationId == null) {
+      _error = 'No hay organización activa';
+      notifyListeners();
+      return false;
+    }
+
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      await _liturgyService.updateSong(liturgyId, blockId, song);
+      await _liturgyService.updateSong(_organizationId!, liturgyId, blockId, song);
       _error = null;
       _isLoading = false;
       notifyListeners();
@@ -120,12 +157,18 @@ class BlockProvider with ChangeNotifier {
   /// Elimina una canción
   Future<bool> deleteSong(
       String liturgyId, String blockId, String songId) async {
+    if (_organizationId == null) {
+      _error = 'No hay organización activa';
+      notifyListeners();
+      return false;
+    }
+
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      await _liturgyService.deleteSong(liturgyId, blockId, songId);
+      await _liturgyService.deleteSong(_organizationId!, liturgyId, blockId, songId);
       _error = null;
       _isLoading = false;
       notifyListeners();

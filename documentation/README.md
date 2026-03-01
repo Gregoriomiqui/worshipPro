@@ -1,10 +1,8 @@
-# WorshipPro
+# WorshipPro - Documentación
 
-> Aplicación móvil para crear, organizar y presentar liturgias de cultos cristianos
+> Aplicación móvil para crear, organizar y presentar liturgias de cultos cristianos con sistema multi-tenant de organizaciones.
 
 ## 📚 Documentación Completa
-
-Esta carpeta contiene toda la documentación necesaria para entender, desarrollar y mantener WorshipPro:
 
 ### 🚀 Para Empezar
 - **[QUICKSTART.md](QUICKSTART.md)** - Instalación rápida y primeros pasos
@@ -15,9 +13,15 @@ Esta carpeta contiene toda la documentación necesaria para entender, desarrolla
 - **[API_REFERENCE.md](API_REFERENCE.md)** - Referencia completa de APIs, modelos y métodos
 - **[COMPONENT_GUIDE.md](COMPONENT_GUIDE.md)** - Guía de todos los widgets y componentes UI
 
-### 🔧 Configuración y Utilidades
-- **[FIREBASE_SETUP.md](FIREBASE_SETUP.md)** - Configuración completa de Firebase
-- **[COMMANDS.md](COMMANDS.md)** - Referencia de comandos útiles de Flutter y Git
+### 🔧 Configuración y Firebase
+- **[FIREBASE_CONFIGURATION.md](FIREBASE_CONFIGURATION.md)** - Guía paso a paso para configurar Firebase Console (Auth + Firestore)
+- **[FIREBASE_SETUP.md](FIREBASE_SETUP.md)** - Setup técnico de Firebase en el proyecto Flutter
+- **[FIRESTORE_STRUCTURE_V1.1.md](FIRESTORE_STRUCTURE_V1.1.md)** - Estructura de datos multi-tenant en Firestore
+- **[COMMANDS.md](COMMANDS.md)** - Referencia de comandos útiles de Flutter, Firebase y Git
+
+### 📋 Implementación
+- **[IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md)** - Guía técnica de implementación v1.1
+- **[IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md)** - Estado de implementación de features
 
 ### 🐛 Mantenimiento
 - **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Solución de problemas comunes
@@ -27,39 +31,38 @@ Esta carpeta contiene toda la documentación necesaria para entender, desarrolla
 
 ## 🤖 Guía Rápida para Agentes IA
 
-Si eres un agente de IA ayudando con este proyecto, sigue este flujo:
-
 ### Primer Contacto
-1. **Lee primero:** [ARCHITECTURE.md](ARCHITECTURE.md) - Entiende la estructura MVVM, capas y flujo de datos
-2. **Luego revisa:** [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) - Contexto general del proyecto
+1. **Lee primero:** [ARCHITECTURE.md](ARCHITECTURE.md) - Estructura MVVM, 5 providers, 4 servicios, 10 pantallas
+2. **Luego revisa:** [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) - Contexto general y estado actual
 
 ### Durante el Desarrollo
 - **Para implementar features:** [API_REFERENCE.md](API_REFERENCE.md) - Todos los Providers, Services y Modelos
-- **Para UI/UX:** [COMPONENT_GUIDE.md](COMPONENT_GUIDE.md) - Widgets disponibles y guías de estilo
-- **Para comandos:** [COMMANDS.md](COMMANDS.md) - Todos los comandos necesarios
+- **Para UI/UX:** [COMPONENT_GUIDE.md](COMPONENT_GUIDE.md) - Widgets y guías de estilo
+- **Para Firebase:** [FIRESTORE_STRUCTURE_V1.1.md](FIRESTORE_STRUCTURE_V1.1.md) - Estructura multi-tenant
 
 ### Solución de Problemas
 - **Si hay errores:** [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Problemas comunes y soluciones
-- **Para Firebase:** [FIREBASE_SETUP.md](FIREBASE_SETUP.md) - Configuración paso a paso
-
-### Información Importante
-- **Cambios recientes:** [CHANGELOG.md](CHANGELOG.md) - Últimas modificaciones
+- **Para Firebase/Auth:** [FIREBASE_CONFIGURATION.md](FIREBASE_CONFIGURATION.md) - SHA-1, Google Sign-In, etc.
 
 ---
 
 ## 🎯 Descripción del Proyecto
 
-**WorshipPro** es una aplicación Flutter diseñada específicamente para tablets, que permite a líderes de cultos cristianos crear y gestionar liturgias de forma simple y eficiente.
+**WorshipPro** es una aplicación Flutter diseñada para tablets y dispositivos móviles, que permite a líderes de cultos cristianos crear y gestionar liturgias de forma profesional.
 
 ### Características principales
 
-- ✅ **Gestión de liturgias**: Crea, edita y organiza liturgias completas
-- ✅ **Bloques personalizables**: 9 tipos de bloques predefinidos (adoración, oración, reflexión, etc.)
-- ✅ **Cálculo automático de duración**: La app suma automáticamente la duración de todos los bloques
-- ✅ **Modo presentación**: Pantalla completa optimizada para presentar durante el culto
-- ✅ **Canciones en adoración**: Agrega canciones con nombre, autor y tono
-- ✅ **Persistencia con Firebase**: Todas las liturgias se guardan en Cloud Firestore
-- ✅ **Diseño tablet-first**: Optimizado para tablets con tipografía grande y alto contraste
+- ✅ **Autenticación**: Email/Password + Google Sign-In con account linking
+- ✅ **Multi-tenant**: Sistema de organizaciones (iglesias) con roles y invitaciones
+- ✅ **Gestión de liturgias**: Crear, editar, duplicar y eliminar liturgias
+- ✅ **10 tipos de bloques**: Adoración, oración, lectura bíblica, reflexión, etc.
+- ✅ **Cálculo automático de duración**: Suma de todos los bloques
+- ✅ **Modo presentación**: Pantalla completa optimizada para proyección
+- ✅ **Canciones**: Gestión de canciones en bloques de adoración (nombre, autor, tono)
+- ✅ **Exportación PDF**: Generar, compartir y guardar liturgias en PDF
+- ✅ **Multiidioma**: Español e inglés con cambio dinámico
+- ✅ **Responsive**: Adaptable a móvil, tablet y desktop
+- ✅ **Persistencia Firebase**: Cloud Firestore con reglas de seguridad multi-tenant
 
 ---
 
@@ -67,229 +70,86 @@ Si eres un agente de IA ayudando con este proyecto, sigue este flujo:
 
 ```
 lib/
-├── main.dart                          # Punto de entrada de la aplicación
-├── firebase_options.dart              # Configuración de Firebase (placeholder)
+├── main.dart                          # Firebase + AuthGuard + 5 Providers
+├── firebase_options.dart              # Generado con flutterfire configure
 │
-├── models/                            # Modelos de datos
-│   ├── block_type.dart                # Enum de tipos de bloques
-│   ├── liturgy.dart                   # Modelo de liturgia
-│   ├── liturgy_block.dart             # Modelo de bloque
-│   └── song.dart                      # Modelo de canción
+├── models/                            # 8 modelos de datos
+│   ├── user.dart                      # Usuario con organizationIds
+│   ├── organization.dart              # Organización (iglesia)
+│   ├── member.dart                    # Miembro con roles (admin/member)
+│   ├── invitation.dart                # Invitación con estados
+│   ├── block_type.dart                # 10 tipos de bloques
+│   ├── liturgy.dart                   # Liturgia con campo hora
+│   ├── liturgy_block.dart             # Bloque de liturgia
+│   └── song.dart                      # Canción (nombre, autor, tono)
 │
-├── services/                          # Servicios
-│   └── liturgy_service.dart           # Servicio de Firebase/Firestore
+├── services/                          # 4 servicios
+│   ├── auth_service.dart              # Auth: email, Google, account linking
+│   ├── organization_service.dart      # CRUD orgs, miembros, invitaciones
+│   ├── liturgy_service.dart           # CRUD multi-tenant liturgias
+│   └── pdf_service.dart               # Generación PDF
 │
-├── providers/                         # Gestión de estado (Provider)
-│   ├── liturgy_provider.dart          # Provider de liturgias
-│   └── block_provider.dart            # Provider de bloques
+├── providers/                         # 5 providers
+│   ├── auth_provider.dart             # Estado de autenticación
+│   ├── organization_provider.dart     # Organizaciones y miembros
+│   ├── liturgy_provider.dart          # Liturgias con contexto org
+│   ├── block_provider.dart            # Bloques con contexto org
+│   └── language_provider.dart         # Idioma con persistencia
 │
-├── screens/                           # Pantallas principales
-│   ├── liturgy_list_screen.dart       # Listado de liturgias
+├── screens/                           # 10 pantallas
+│   ├── auth/                          # Login, registro, recuperar contraseña
+│   ├── organization/                  # Selector, crear, settings, invitaciones
+│   ├── liturgy_list_screen.dart       # Lista de liturgias
 │   ├── liturgy_editor_screen.dart     # Editor de liturgia
 │   └── presentation_mode_screen.dart  # Modo presentación
 │
-├── widgets/                           # Widgets compartidos
-│   └── common_widgets.dart            # Widgets comunes (Loading, Empty, Error, etc.)
+├── widgets/                           # Widgets reutilizables
+│   ├── common_widgets.dart            # Loading, Empty, Error, Confirm
+│   └── language_selector.dart         # Selector ES/EN
 │
-└── theme/                             # Tema de la aplicación
-    └── app_theme.dart                 # Definición de colores y estilos
+├── theme/                             # Tema Material 3
+│   └── app_theme.dart                 # Paleta Indigo/Violeta
+│
+├── utils/                             # Utilidades
+│   └── responsive_utils.dart          # Breakpoints y responsive helpers
+│
+└── l10n/                              # Internacionalización
+    └── app_localizations.dart         # 70+ traducciones ES/EN
 ```
 
 ---
 
-## 🔥 Estructura de Firestore
-
-### Colección: `liturgias`
+## 🔥 Estructura de Firestore (v1.1 Multi-tenant)
 
 ```
-liturgias (colección)
-├── {liturgyId} (documento)
-│   ├── titulo: string
-│   ├── fecha: timestamp
-│   ├── descripcion: string?
-│   ├── createdAt: timestamp
-│   ├── updatedAt: timestamp
-│   │
-│   └── bloques (subcolección)
-│       ├── {blockId} (documento)
-│       │   ├── tipo: string (enum: adoracionAlabanza, oracion, etc.)
-│       │   ├── descripcion: string
-│       │   ├── responsables: array<string>
-│       │   ├── comentarios: string?
-│       │   ├── duracionMinutos: number
-│       │   ├── orden: number
-│       │   │
-│       │   └── canciones (subcolección) // Solo para bloques de tipo "adoracionAlabanza"
-│       │       └── {songId} (documento)
-│       │           ├── nombre: string
-│       │           ├── autor: string?
-│       │           └── tono: string?
+firestore (root)
+├── users/{userId}
+│   └── email, displayName, organizationIds, activeOrganizationId, authProviders
+│
+├── organizations/{organizationId}
+│   ├── nombre, descripcion, createdBy
+│   ├── members/{userId} → email, displayName, role (admin|member)
+│   └── liturgias/{liturgyId}
+│       ├── titulo, fecha, hora, descripcion, createdBy
+│       └── bloques/{blockId}
+│           ├── tipo, descripcion, responsables, duracionMinutos, orden
+│           └── canciones/{songId} → nombre, autor, tono, orden
+│
+└── invitations/{invitationId}
+    └── organizationId, email, role, status (pending|accepted|rejected)
 ```
 
 ---
 
-## 🚀 Instalación y configuración
+## 🔒 Reglas de seguridad
 
-### Requisitos previos
+Las reglas de Firestore implementan:
+- **Autenticación obligatoria** para todas las operaciones
+- **Aislamiento multi-tenant** con helper `isMemberOf(orgId)`
+- **Control de roles** con helper `isAdminOf(orgId)`
+- **Acceso a invitaciones** filtrado por email
 
-- Flutter SDK (>=3.10.4)
-- Cuenta de Firebase
-- Android Studio o Xcode (para emuladores/simuladores)
-
-### Paso 1: Clonar el repositorio
-
-```bash
-cd worshippro
-```
-
-### Paso 2: Instalar dependencias
-
-```bash
-flutter pub get
-```
-
-### Paso 3: Configurar Firebase
-
-#### Opción A: Usar FlutterFire CLI (Recomendado)
-
-```bash
-# Instalar FlutterFire CLI
-dart pub global activate flutterfire_cli
-
-# Configurar Firebase para tu proyecto
-flutterfire configure
-```
-
-Esto generará automáticamente el archivo `firebase_options.dart` con tu configuración.
-
-#### Opción B: Configuración manual
-
-1. Ve a [Firebase Console](https://console.firebase.google.com/)
-2. Crea un nuevo proyecto
-3. Habilita **Cloud Firestore**
-4. Agrega aplicaciones:
-   - **Android**: Descarga `google-services.json` y colócalo en `android/app/`
-   - **iOS**: Descarga `GoogleService-Info.plist` y colócalo en `ios/Runner/`
-   - **Web**: Copia la configuración web
-
-### Paso 4: Ejecutar la aplicación
-
-```bash
-# Para Android
-flutter run -d android
-
-# Para iOS
-flutter run -d ios
-
-# Para web
-flutter run -d chrome
-```
-
----
-
-## 📱 Pantallas de la aplicación
-
-### 1. Listado de liturgias
-
-Muestra todas las liturgias creadas, ordenadas por fecha. Incluye:
-- Título y fecha de cada liturgia
-- Duración total calculada
-- Número de bloques
-- Botón para crear nueva liturgia
-- Botón para eliminar liturgia
-
-### 2. Editor de liturgia
-
-Interfaz dividida en dos paneles:
-
-**Panel izquierdo**: Información básica
-- Título del culto
-- Fecha
-- Descripción opcional
-- **Duración total** (calculada automáticamente)
-
-**Panel derecho**: Gestión de bloques
-- Lista de bloques reordenables (drag & drop)
-- Agregar, editar y eliminar bloques
-- Ver detalles: tipo, descripción, duración, responsables
-- Agregar canciones (solo en bloques de adoración)
-
-### 3. Modo presentación
-
-Pantalla completa optimizada para presentar durante el culto:
-- **Bloque actual**: Mostrado con tipografía grande y alto contraste
-- **Bloque siguiente**: Vista previa en la parte inferior
-- **Duración total del culto**: Visible en el header
-- **Controles de navegación**: Botones para avanzar/retroceder
-- **Información detallada**: Responsables, canciones, comentarios
-
----
-
-## 🧩 Tipos de bloques disponibles
-
-| Tipo | Descripción |
-|------|-------------|
-| **Adoración y alabanza** | Tiempo de música y canciones (permite agregar canciones) |
-| **Oración** | Momentos de oración congregacional o dirigida |
-| **Reflexión** | Lectura bíblica, meditación o predicación |
-| **Acción de gracias** | Testimonios o momentos de gratitud |
-| **Ofrendas** | Tiempo de ofrenda |
-| **Anuncios** | Comunicaciones e información |
-| **Saludos** | Bienvenida o saludo fraternal |
-| **Despedida** | Bendición final |
-| **Otros** | Cualquier otro tipo de actividad |
-
----
-
-## 🎨 Personalización
-
-### Cambiar colores del tema
-
-Edita `lib/theme/app_theme.dart`:
-
-```dart
-static const Color primaryColor = Color(0xFF6366F1); // Indigo
-static const Color secondaryColor = Color(0xFF8B5CF6); // Violeta
-```
-
-### Agregar nuevos tipos de bloques
-
-Edita `lib/models/block_type.dart`:
-
-```dart
-enum BlockType {
-  // ... existentes
-  tuNuevoTipo('Tu nuevo tipo'),
-}
-```
-
----
-
-## 🔒 Reglas de seguridad de Firestore
-
-Para producción, configura reglas de seguridad apropiadas en Firebase Console:
-
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // Permitir lectura y escritura a todas las liturgias (ajustar según necesidad)
-    match /liturgias/{liturgyId} {
-      allow read, write: if true; // Cambiar según autenticación
-      
-      match /bloques/{blockId} {
-        allow read, write: if true;
-        
-        match /canciones/{songId} {
-          allow read, write: if true;
-        }
-      }
-    }
-  }
-}
-```
-
-⚠️ **Nota**: Las reglas anteriores son permisivas para desarrollo. En producción, implementa autenticación y reglas más restrictivas.
+Ver el archivo `firestore.rules` en la raíz del proyecto.
 
 ---
 
@@ -298,37 +158,20 @@ service cloud.firestore {
 | Paquete | Propósito |
 |---------|-----------|
 | `firebase_core` | Inicialización de Firebase |
-| `cloud_firestore` | Base de datos NoSQL en la nube |
-| `provider` | Gestión de estado |
+| `cloud_firestore` | Base de datos NoSQL multi-tenant |
+| `firebase_auth` | Autenticación (Email + Google) |
+| `google_sign_in` | Google Sign-In nativo |
+| `provider` | Gestión de estado (MVVM) |
+| `pdf` | Generación de documentos PDF |
+| `path_provider` | Acceso a directorios del sistema |
+| `share_plus` | Compartir archivos |
+| `flutter_file_dialog` | Guardar archivos en ubicación elegida |
+| `permission_handler` | Gestión de permisos del sistema |
 | `intl` | Internacionalización y formato de fechas |
 | `uuid` | Generación de IDs únicos |
+| `shared_preferences` | Persistencia local (idioma) |
 
 ---
 
-## 🛣️ Roadmap (Futuras mejoras)
-
-- [ ] Autenticación de usuarios
-- [ ] Sincronización offline
-- [ ] Exportar liturgias a PDF
-- [ ] Compartir liturgias entre usuarios
-- [ ] Temas oscuros
-- [ ] Soporte multiidioma
-- [ ] Historial de versiones de liturgias
-- [ ] Plantillas de liturgias predefinidas
-
----
-
-## 📄 Licencia
-
-Este proyecto es de código abierto y está disponible bajo la licencia MIT.
-
----
-
-**¡Que Dios bendiga tu ministerio!** 🙏
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+**Última actualización:** Marzo 2026
+**Versión actual:** v1.1 (Multi-tenant con Auth)

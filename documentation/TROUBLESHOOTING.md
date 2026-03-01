@@ -135,24 +135,10 @@ service cloud.firestore {
 }
 ```
 
-3. Para producción (ver `FIREBASE_SETUP.md`):
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /liturgias/{liturgyId} {
-      allow read, write: if request.auth != null;
-      
-      match /bloques/{blockId} {
-        allow read, write: if request.auth != null;
-        
-        match /canciones/{songId} {
-          allow read, write: if request.auth != null;
-        }
-      }
-    }
-  }
-}
+3. Para producción, el proyecto usa reglas multi-tenant con aislamiento por organización.
+   Despliega las reglas configuradas en `firestore.rules`:
+```bash
+firebase deploy --only firestore:rules
 ```
 
 ### Error: Plataforma no configurada
@@ -445,6 +431,8 @@ Error: Could not find the correct Provider<LiturgyProvider>
 ```dart
 MultiProvider(
   providers: [
+    ChangeNotifierProvider(create: (_) => AuthProvider()),
+    ChangeNotifierProvider(create: (_) => OrganizationProvider()),
     ChangeNotifierProvider(create: (_) => LiturgyProvider()),
     ChangeNotifierProvider(create: (_) => BlockProvider()),
     ChangeNotifierProvider(create: (_) => LanguageProvider()),
@@ -766,25 +754,41 @@ FirebaseFirestore.instance.settings = const Settings(
 );
 ```
 
-### Limitación: Sin autenticación
+### Problema: DEVELOPER_ERROR al usar Google Sign-In
 
 **Situación:**
-App actualmente no tiene sistema de login.
+Al intentar iniciar sesión con Google aparece `PlatformException(sign_in_failed, ... DEVELOPER_ERROR)`.
 
-**Para implementar:**
-1. Agregar `firebase_auth` a pubspec.yaml
-2. Crear AuthProvider
-3. Implementar login/logout screens
-4. Actualizar reglas de seguridad
+**Causa:** SHA-1 del certificado de debug no registrado en Firebase Console.
+
+**Solución:**
+1. Obtener SHA-1:
+```bash
+cd android && ./gradlew signingReport
+```
+2. Copiar el SHA-1 de la variante `debug`
+3. Firebase Console → Project Settings → Android app → Add fingerprint
+4. Re-descargar `google-services.json` y reemplazar en `android/app/`
+5. `flutter clean && flutter run`
+
+### Problema: Unable to resolve host firestore.googleapis.com
+
+**Situación:**
+La app no puede conectarse a Firestore y muestra `UnknownHostException`.
+
+**Causa:** El dispositivo no tiene conexión a internet.
+
+**Solución:** Verificar conexión WiFi o datos móviles del dispositivo.
 
 ---
 
 ## Obtener Ayuda
 
 1. **Documentación interna:**
-   - `ARCHITECTURE.md` - Arquitectura de la app
-   - `API_REFERENCE.md` - Referencia completa de APIs
-   - `FIREBASE_SETUP.md` - Configuración de Firebase
+   - `ARCHITECTURE.md` — Arquitectura de la app (MVVM multi-tenant)
+   - `API_REFERENCE.md` — Referencia de 8 modelos, 5 providers, 4 servicios
+   - `FIREBASE_SETUP.md` — Configuración de Firebase Auth + Firestore
+   - `FIRESTORE_STRUCTURE_V1.1.md` — Estructura multi-tenant de Firestore
 
 2. **Logs detallados:**
 ```bash

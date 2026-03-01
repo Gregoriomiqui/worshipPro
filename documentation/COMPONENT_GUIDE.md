@@ -2,6 +2,9 @@
 
 ## Índice
 - [Screens (Pantallas)](#screens-pantallas)
+  - [Auth Screens](#auth-screens)
+  - [Organization Screens](#organization-screens)
+  - [Liturgy Screens](#liturgy-screens)
 - [Widgets Comunes](#widgets-comunes)
 - [Widgets de Lista](#widgets-de-lista)
 - [Widgets de Formulario](#widgets-de-formulario)
@@ -13,9 +16,137 @@
 
 ## Screens (Pantallas)
 
+La app cuenta con **10 pantallas** organizadas en 3 categorías: Auth (3), Organization (4) y Liturgy (3).
+
+### Auth Screens
+
+#### LoginScreen
+
+Pantalla de inicio de sesión con múltiples proveedores.
+
+**Ubicación:** `lib/screens/login_screen.dart`
+
+**Características:**
+- Login con email/contraseña
+- Login con Google Sign-In
+- Enlace a registro de nuevo usuario
+- Enlace a recuperación de contraseña
+- Validación de formulario
+
+**Provider dependencies:**
+- `AuthProvider` — Autenticación y sesión
+
+---
+
+#### RegisterScreen
+
+Pantalla de registro de nuevos usuarios.
+
+**Ubicación:** `lib/screens/register_screen.dart`
+
+**Características:**
+- Formulario: nombre, email, contraseña, confirmar contraseña
+- Validación de campos
+- Enlace de vuelta a login
+
+**Provider dependencies:**
+- `AuthProvider` — Registro de usuario
+
+---
+
+#### PasswordRecoveryScreen
+
+Pantalla para recuperar contraseña por email.
+
+**Ubicación:** `lib/screens/password_recovery_screen.dart`
+
+**Características:**
+- Campo de email
+- Envío de enlace de recuperación via Firebase Auth
+- Confirmación de envío exitoso
+
+**Provider dependencies:**
+- `AuthProvider` — Envío de email de recuperación
+
+---
+
+### Organization Screens
+
+#### OrganizationSelectorScreen
+
+Pantalla para seleccionar la organización activa.
+
+**Ubicación:** `lib/screens/organization_selector_screen.dart`
+
+**Características:**
+- Lista de organizaciones del usuario
+- Selección de organización activa
+- Botón para crear nueva organización
+- Vista de invitaciones pendientes
+
+**Provider dependencies:**
+- `AuthProvider` — Usuario actual
+- `OrganizationProvider` — Lista de organizaciones
+
+---
+
+#### CreateOrganizationScreen
+
+Pantalla para crear una nueva organización (iglesia).
+
+**Ubicación:** `lib/screens/create_organization_screen.dart`
+
+**Características:**
+- Formulario: nombre y descripción
+- El creador se asigna automáticamente como Admin
+- Redirección al selector tras crear
+
+**Provider dependencies:**
+- `AuthProvider` — Usuario actual (createdBy)
+- `OrganizationProvider` — Crear organización
+
+---
+
+#### OrganizationSettingsScreen
+
+Pantalla de configuración de la organización (solo Admins).
+
+**Ubicación:** `lib/screens/organization_settings_screen.dart`
+
+**Características:**
+- Editar nombre y descripción
+- Ver lista de miembros con roles
+- Eliminar miembros (solo Admin)
+- Acceso a gestión de invitaciones
+
+**Provider dependencies:**
+- `OrganizationProvider` — Datos de organización y miembros
+
+---
+
+#### InvitationsScreen
+
+Pantalla para gestionar invitaciones a la organización.
+
+**Ubicación:** `lib/screens/invitations_screen.dart`
+
+**Características:**
+- Enviar invitaciones por email con rol (Admin/Miembro)
+- Lista de invitaciones enviadas con estado (pendiente/aceptada/rechazada)
+- Ver invitaciones recibidas pendientes
+- Aceptar o rechazar invitaciones recibidas
+
+**Provider dependencies:**
+- `AuthProvider` — Usuario actual
+- `OrganizationProvider` — Invitaciones
+
+---
+
+### Liturgy Screens
+
 ### LiturgyListScreen
 
-Pantalla principal que muestra lista de todas las liturgias.
+Pantalla principal que muestra lista de todas las liturgias de la organización activa.
 
 **Ubicación:** `lib/screens/liturgy_list_screen.dart`
 
@@ -46,8 +177,9 @@ Navigator.of(context).pushNamed('/');
 ```
 
 **Provider dependencies:**
-- `LiturgyProvider` - Lista de liturgias
-- `LanguageProvider` - Traducciones
+- `LiturgyProvider` — Lista de liturgias (filtradas por organización activa)
+- `OrganizationProvider` — Organización activa
+- `LanguageProvider` — Traducciones
 
 ---
 
