@@ -218,6 +218,9 @@ class _OrganizationSelectorScreenState
                   // Logout button
                   TextButton.icon(
                     onPressed: () {
+                      context.read<OrganizationProvider>().clear();
+                      context.read<LiturgyProvider>().clear();
+                      context.read<BlockProvider>().clear();
                       context.read<AuthProvider>().signOut();
                     },
                     icon: const Icon(Icons.logout),
@@ -237,13 +240,39 @@ class _OrganizationSelectorScreenState
     OrganizationProvider orgProvider,
     AuthProvider authProvider,
   ) {
+    final hasPendingInvitations = orgProvider.pendingInvitations.isNotEmpty;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mis Iglesias'),
         actions: [
+          // Botón de invitaciones
+          if (hasPendingInvitations)
+            IconButton(
+              icon: Badge(
+                label: Text('${orgProvider.pendingInvitations.length}'),
+                child: const Icon(Icons.mail),
+              ),
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const InvitationsScreen(),
+                  ),
+                );
+                if (result == true && mounted) {
+                  await _loadUserOrganizations();
+                  await _checkPendingInvitations();
+                }
+              },
+              tooltip: 'Ver Invitaciones',
+            ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () {
+              context.read<OrganizationProvider>().clear();
+              context.read<LiturgyProvider>().clear();
+              context.read<BlockProvider>().clear();
               context.read<AuthProvider>().signOut();
             },
             tooltip: 'Cerrar Sesión',

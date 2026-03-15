@@ -226,10 +226,9 @@ class AuthService {
 
         return appUser;
       } else {
-        // Usuario ya existe, actualizar authProviders y limpiar activeOrganizationId
+        // Usuario ya existe, actualizar authProviders (conservar activeOrganizationId)
         final appUser = app_models.User.fromFirestore(userDoc);
         final Map<String, dynamic> updates = {
-          'activeOrganizationId': null,
           'updatedAt': Timestamp.fromDate(DateTime.now()),
         };
 
@@ -237,13 +236,14 @@ class AuthService {
           updates['authProviders'] = [...appUser.authProviders, 'google.com'];
         }
 
-        await _firestore.collection('users').doc(firebaseUser.uid).update(updates);
+        if (updates.containsKey('authProviders')) {
+          await _firestore.collection('users').doc(firebaseUser.uid).update(updates);
+        }
 
         return appUser.copyWith(
           authProviders: updates.containsKey('authProviders')
               ? List<String>.from(updates['authProviders'])
               : appUser.authProviders,
-          activeOrganizationId: null,
           updatedAt: DateTime.now(),
         );
       }

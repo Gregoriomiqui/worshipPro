@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/organization_provider.dart';
 import '../../models/invitation.dart';
+import 'organization_selector_screen.dart';
 
 /// Pantalla para ver y gestionar invitaciones
 class InvitationsScreen extends StatefulWidget {
@@ -87,13 +88,29 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
           ),
         );
         
-        // Reload invitations and return to previous screen
-        await _loadInvitations();
-        if (orgProvider.pendingInvitations.isEmpty && mounted) {
-          Navigator.pop(context, true);
+        // Recargar usuario para obtener la nueva organizationIds
+        await authProvider.refreshUser();
+        
+        // Recargar organizaciones del usuario
+        if (authProvider.currentUser != null) {
+          await orgProvider.loadUserOrganizations(
+            authProvider.currentUser!.organizationIds,
+          );
+        }
+        
+        // Navegar al selector de organizaciones para mostrar el listado actualizado
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const OrganizationSelectorScreen(),
+            ),
+          );
         }
       } else {
-        throw Exception('No se pudo aceptar la invitación');
+        throw Exception(
+          orgProvider.errorMessage ?? 'No se pudo aceptar la invitación',
+        );
       }
     } catch (e) {
       if (mounted) {

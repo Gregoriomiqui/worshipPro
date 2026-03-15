@@ -137,6 +137,7 @@ class OrganizationService {
     required String displayName,
     required MemberRole role,
     String? invitedBy,
+    String? invitationId,
   }) async {
     try {
       final member = Member(
@@ -148,12 +149,17 @@ class OrganizationService {
         invitedBy: invitedBy,
       );
 
+      final memberData = member.toFirestore();
+      if (invitationId != null && invitationId.isNotEmpty) {
+        memberData['invitationId'] = invitationId;
+      }
+
       await _firestore
           .collection('organizations')
           .doc(organizationId)
           .collection('members')
           .doc(userId)
-          .set(member.toFirestore());
+          .set(memberData);
 
       // Actualizar users/{userId}.organizationIds
       await _firestore.collection('users').doc(userId).update({
@@ -250,6 +256,8 @@ class OrganizationService {
       await _firestore.collection('users').doc(userId).update({
         'organizationIds': FieldValue.arrayRemove([organizationId]),
         'updatedAt': FieldValue.serverTimestamp(),
+        'removeOrganizationId': organizationId,
+        'removeOrganizationAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
       throw OrganizationException('Error al eliminar miembro: $e');
@@ -363,6 +371,7 @@ class OrganizationService {
         displayName: displayName,
         role: invitation.role,
         invitedBy: invitation.invitedBy,
+        invitationId: invitationId,
       );
 
       // 3. Actualizar estado de invitación

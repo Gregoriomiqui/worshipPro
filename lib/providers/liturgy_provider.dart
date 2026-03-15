@@ -202,4 +202,15 @@ class LiturgyProvider with ChangeNotifier {
     _error = null;
     notifyListeners();
   }
+
+  /// Limpia todos los datos (útil para logout)
+  void clear() {
+    _liturgies = [];
+    _currentLiturgy = null;
+    _isLoading = false;
+    _error = null;
+    _organizationId = null;
+    _currentUserId = null;
+    notifyListeners();
+  }
 }

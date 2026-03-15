@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/block_provider.dart';
+import '../../providers/liturgy_provider.dart';
 import '../../providers/organization_provider.dart';
 import '../../models/organization.dart';
 import '../../models/member.dart';
@@ -190,10 +192,17 @@ class _OrganizationSettingsScreenState
   Future<void> _handleChangeOrganization() async {
     final authProvider = context.read<AuthProvider>();
     final orgProvider = context.read<OrganizationProvider>();
+    final liturgyProvider = context.read<LiturgyProvider>();
+    final blockProvider = context.read<BlockProvider>();
 
     if (authProvider.currentUserId == null) return;
 
     try {
+      // Limpiar providers antes de cambiar organización
+      orgProvider.clear();
+      liturgyProvider.clear();
+      blockProvider.clear();
+
       await FirebaseFirestore.instance
           .collection('users')
           .doc(authProvider.currentUserId)
@@ -206,19 +215,19 @@ class _OrganizationSettingsScreenState
 
       final refreshedUser = authProvider.currentUser;
       if (refreshedUser != null) {
-        orgProvider.clear();
         await orgProvider.loadUserOrganizations(refreshedUser.organizationIds);
         await orgProvider.loadPendingInvitations(refreshedUser.email);
       }
 
       if (!mounted) return;
 
+      // Navegar al selector de organizaciones reemplazando todas las rutas hasta la raíz
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
           builder: (_) => const OrganizationSelectorScreen(),
         ),
-        (_) => false,
+        (route) => route.isFirst, // Mantener solo la primera ruta (AuthGuard)
       );
     } catch (e) {
       if (!mounted) return;

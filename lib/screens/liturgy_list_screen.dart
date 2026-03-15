@@ -4,11 +4,11 @@ import 'package:provider/provider.dart';
 import 'package:worshippro/l10n/app_localizations.dart';
 import 'package:worshippro/models/liturgy.dart';
 import 'package:worshippro/providers/auth_provider.dart';
+import 'package:worshippro/providers/block_provider.dart';
 import 'package:worshippro/providers/liturgy_provider.dart';
 import 'package:worshippro/providers/organization_provider.dart';
 import 'package:worshippro/screens/liturgy_editor_screen.dart';
 import 'package:worshippro/screens/organization/organization_selector_screen.dart';
-import 'package:worshippro/screens/auth/login_screen.dart';
 import 'package:worshippro/screens/organization/organization_settings_screen.dart';
 import 'package:worshippro/services/pdf_service.dart';
 import 'package:worshippro/utils/responsive_utils.dart';
@@ -369,19 +369,13 @@ class _LiturgyListScreenState extends State<LiturgyListScreen> {
     );
 
     if (confirmed == true && mounted) {
+      // Limpiar providers antes de cerrar sesión
+      context.read<OrganizationProvider>().clear();
+      context.read<LiturgyProvider>().clear();
+      context.read<BlockProvider>().clear();
+      
       // Cerrar sesión
       await context.read<AuthProvider>().signOut();
-      
-      // Navegar explícitamente al LoginScreen
-      if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const LoginScreen(),
-          ),
-          (route) => false, // Eliminar todas las rutas anteriores
-        );
-      }
     }
   }
 

@@ -203,21 +203,11 @@ class AuthProvider with ChangeNotifier {
         password: password,
       );
 
-      // CRÍTICO: Limpiar organización activa ANTES de notificar
-      // Esto asegura que cuando el AuthGuard se reconstruya, vea el valor null
-      print('🔵 AuthProvider.signInWithEmail: Limpiando activeOrganizationId en Firestore');
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.id)
-          .update({'activeOrganizationId': null});
-      
-      print('🔵 AuthProvider.signInWithEmail: Firestore actualizado, actualizando estado local');
-      // Actualizar el usuario con el cambio
-      _currentUser = user.copyWith(activeOrganizationId: null);
+      // Conservar activeOrganizationId del usuario para mantener su última organización seleccionada
+      _currentUser = user;
       _status = AuthStatus.authenticated;
       
-      // Notificar para que el AuthGuard redirija a OrganizationSelectorScreen
-      print('🔵 AuthProvider.signInWithEmail: Notificando listeners (activeOrganizationId: ${_currentUser?.activeOrganizationId})');
+      print('🔵 AuthProvider.signInWithEmail: Login exitoso (activeOrganizationId: ${_currentUser?.activeOrganizationId})');
       _isLoggingIn = false; // Desactivar bandera ANTES de notificar
       notifyListeners();
       
@@ -249,13 +239,12 @@ class AuthProvider with ChangeNotifier {
 
       final user = await _authService.signInWithGoogle();
 
-      // El service ya limpia activeOrganizationId en Firestore
+      // Usuarios nuevos tienen activeOrganizationId: null, usuarios existentes conservan su valor
       print('🔵 AuthProvider.signInWithGoogle: Usuario obtenido, actualizando estado local');
       _currentUser = user;
       _status = AuthStatus.authenticated;
       _errorMessage = null;
       
-      // Notificar para que el AuthGuard redirija a OrganizationSelectorScreen
       print('🔵 AuthProvider.signInWithGoogle: Notificando listeners (activeOrganizationId: ${_currentUser?.activeOrganizationId})');
       _isLoggingIn = false; // Desactivar bandera ANTES de notificar
       print('🔵 AuthProvider.signInWithGoogle: Bandera _isLoggingIn desactivada, _onAuthStateChanged puede ejecutarse ahora');

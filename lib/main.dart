@@ -112,67 +112,94 @@ class AuthGuard extends StatelessWidget {
 
 
 /// Widget para cargar los datos iniciales de la organización y el usuario.
-class _InitialDataLoader extends StatelessWidget {
+class _InitialDataLoader extends StatefulWidget {
   final app_models.User user;
 
   const _InitialDataLoader({required this.user});
 
-  Future<void> _loadInitialData(BuildContext context) async {
-    // Usar 'read' para ejecutar acciones sin volver a escuchar aquí
-    final orgProvider = context.read<OrganizationProvider>();
-    final liturgyProvider = context.read<LiturgyProvider>();
-    final blockProvider = context.read<BlockProvider>();
-    
-    // Solo recargar datos si es estrictamente necesario para evitar bucles.
-    // 1. Cargar la lista de organizaciones si no está ya cargada.
-    if (orgProvider.userOrganizations.isEmpty) {
-      await orgProvider.loadUserOrganizations(user.organizationIds);
+  @override
+  State<_InitialDataLoader> createState() => _InitialDataLoaderState();
+}
+
+class _InitialDataLoaderState extends State<_InitialDataLoader> {
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    // Cargar datos después de que el frame actual termine
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitialData();
+    });
+  }
+
+  Future<void> _loadInitialData() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final orgProvider = context.read<OrganizationProvider>();
+      final liturgyProvider = context.read<LiturgyProvider>();
+      final blockProvider = context.read<BlockProvider>();
+      
+      // Solo recargar datos si es estrictamente necesario para evitar bucles.
+      // 1. Cargar la lista de organizaciones si no está ya cargada.
+      if (orgProvider.userOrganizations.isEmpty) {
+        await orgProvider.loadUserOrganizations(widget.user.organizationIds);
+      }
+      
+      // 2. Establecer la organización activa solo si no es ya la correcta.
+      if (orgProvider.activeOrganization?.id != widget.user.activeOrganizationId) {
+        await orgProvider.setActiveOrganization(widget.user.activeOrganizationId!);
+      }
+      
+      // 3. Configurar el contexto para los otros providers.
+      liturgyProvider.setContext(widget.user.activeOrganizationId!, widget.user.id);
+      blockProvider.setOrganizationId(widget.user.activeOrganizationId!);
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString();
+        });
+      }
     }
-    
-    // 2. Establecer la organización activa solo si no es ya la correcta.
-    if (orgProvider.activeOrganization?.id != user.activeOrganizationId) {
-      await orgProvider.setActiveOrganization(user.activeOrganizationId!);
-    }
-    
-    // 3. Configurar el contexto para los otros providers.
-    liturgyProvider.setContext(user.activeOrganizationId!, user.id);
-    blockProvider.setOrganizationId(user.activeOrganizationId!);
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: _loadInitialData(context),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
-        }
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
-        if (snapshot.hasError) {
-          // Proporcionar una forma de reintentar
-          return Scaffold(
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Error al cargar datos: ${snapshot.error}'),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () {
-                      // Re-ejecutar el FutureBuilder
-                      (context as Element).reassemble();
-                    },
-                    child: const Text('Reintentar'),
-                  )
-                ],
-              ),
-            ),
-          );
-        }
+    if (_errorMessage != null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Error al cargar datos: $_errorMessage'),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _loadInitialData,
+                child: const Text('Reintentar'),
+              )
+            ],
+          ),
+        ),
+      );
+    }
 
-        // Una vez que los datos están cargados, ir a la pantalla principal.
-        return const LiturgyListScreen();
-      },
-    );
+    // Una vez que los datos están cargados, ir a la pantalla principal.
+    return const LiturgyListScreen();
   }
 }

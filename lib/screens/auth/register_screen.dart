@@ -28,42 +28,73 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  Future<void> _showSuccessAndReturnToRoot(String message) async {
+    if (!mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.green,
+          duration: const Duration(milliseconds: 1200),
+        ),
+      );
+
+    await Future.delayed(const Duration(milliseconds: 350));
+    if (!mounted) return;
+
+    // Regresa a la ruta raíz para que AuthGuard decida la pantalla correcta.
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
 
     final authProvider = context.read<AuthProvider>();
     print('🔵 RegisterScreen: Iniciando registro...');
-    
-    authProvider.registerWithEmail(
+
+    final success = await authProvider.registerWithEmail(
       email: _emailController.text.trim(),
       password: _passwordController.text,
       displayName: _nameController.text.trim(),
-    ).then((success) {
-      if (!success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(authProvider.errorMessage ?? 'Error al registrarse'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    });
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      await _showSuccessAndReturnToRoot('Cuenta creada correctamente');
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(authProvider.errorMessage ?? 'Error al registrarse'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   Future<void> _handleGoogleRegister() async {
     final authProvider = context.read<AuthProvider>();
     print('🔵 RegisterScreen: Iniciando Google sign-in...');
-    
-    authProvider.signInWithGoogle().then((success) {
-      if (!success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(authProvider.errorMessage ?? 'Error al registrarse con Google'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    });
+
+    final success = await authProvider.signInWithGoogle();
+
+    if (!mounted) return;
+
+    if (success) {
+      await _showSuccessAndReturnToRoot('Cuenta creada correctamente con Google');
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(authProvider.errorMessage ?? 'Error al registrarse con Google'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   @override
@@ -232,7 +263,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ? null
                                   : _handleRegister,
                               style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                  horizontal: 24,
+                                ),
+                                minimumSize: const Size(double.infinity, 52),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
