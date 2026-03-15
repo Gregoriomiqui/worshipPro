@@ -244,6 +244,7 @@ class _OrganizationSelectorScreenState
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('Mis Iglesias'),
         actions: [
           // Botón de invitaciones

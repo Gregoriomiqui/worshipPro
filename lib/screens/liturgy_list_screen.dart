@@ -41,6 +41,7 @@ class _LiturgyListScreenState extends State<LiturgyListScreen> {
     
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
